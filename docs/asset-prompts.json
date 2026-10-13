@@ -1,37 +1,48 @@
 {
   "mode": "Cursor GenerateImage tool",
-  "reference": "User's reference photo of a modern charcoal fire safe (single dial with white bezel, lever handle, key lock, chrome locking bolts), combined with the written brief's room, lighting and straight-on framing. Branding from the reference was deliberately excluded.",
-  "sources": "assets/source/",
-  "runtimePlates": "public/assets/safe/",
-  "prompts": [
+  "note": "The heavy model keeps its exact prompts below. The other models' briefs summarize the subject and edit chain; they are not verbatim prompts.",
+  "sources": "assets/source/<model>/",
+  "runtimePlates": "public/assets/safe/<model>-*.webp",
+  "chain": {
+    "closed.jpg": "Master shot: a real, candid DSLR photograph of the safe, closed, camera level and square to the door, the safe filling about half the frame height, soft window light from the upper left, no logos or readable text.",
+    "interior.jpg": "Edit of closed.jpg: remove only the front door, revealing an empty interior with one shelf. Keep the cabinet, room, camera and lighting pixel-identical.",
+    "gold.jpg": "Edit of interior.jpg: one plain gold bullion bar on the shelf. Nothing else changes.",
+    "brass.jpg": "Edit of interior.jpg: a short stack and a few loose aged brass coins on the shelf. Nothing else changes.",
+    "rear.jpg": "Edit of closed.jpg: within only the door, show its inside face (bolt work or cover plate), same size and position."
+  },
+  "models": {
+    "practice": { "tier": "Practice box", "brief": "Small cream enamel steel box with rust specks, one black-faced combination dial with a chrome rim, a chrome bail handle, two right-side hinges, on a scarred wooden workbench in front of a pegboard of tools.", "variants": ["closed", "interior", "rear"] },
+    "street": { "tier": "Street locker", "brief": "Antique riveted cast-iron safe with twin combination dials and a spoked handwheel, on worn floorboards against a plaster wall. Restored from the original antique iron plate set.", "variants": ["closed", "interior", "gold", "brass", "rear"] },
+    "keypad": { "tier": "Keypad safe", "brief": "Victorian safe in distressed green paint with gilt lining and a cornice, an inset black electronic keypad with a dark ember readout, a brass four-spoke handle, on a Persian rug.", "variants": ["closed", "interior", "gold", "brass", "rear"] },
+    "heavy": { "tier": "Counting-house vault", "brief": "Hybrid of the user's reference photo and the written brief; see heavyPrompts.", "variants": ["closed", "interior", "gold", "brass", "rear"] },
+    "treasury": { "tier": "Treasury safe", "brief": "Tall black steel safe with a brass-framed keypad and ember readout, a chrome four-spoke handle, chrome bolts on the inside face, on a Persian rug against a plaster wall.", "variants": ["closed", "interior", "gold", "brass", "rear"] },
+    "vault": { "tier": "Bank vault", "brief": "Round brushed-steel bank vault door set in a square steel frame in a concrete wall, two heavy right-side hinges, a dark keypad with ember readout and a three-spoke wheel. The inside face shows radial bolt gearing.", "variants": ["closed", "interior", "gold", "brass", "rear"] },
+    "royal": { "tier": "Royal strongbox", "brief": "Red lacquered strongbox with gilt scrollwork, a black-faced combination dial in an ornate gilt bezel, a gilt keyhole escutcheon and cartouche, gilt hinges, on gilt claw feet, red velvet interior.", "variants": ["closed", "interior", "gold", "brass", "rear"] }
+  },
+  "heavyPrompts": [
     {
-      "file": "dial-room.jpg",
+      "file": "heavy/closed.jpg",
       "inputs": ["user reference photo"],
       "prompt": "A real, candid DSLR photograph (not a 3D render, not CGI), shot on a 50mm lens from about 2.5 meters away, camera exactly level and square to the front of the object. Subject: a modern home fire safe like the one in the reference, seen exactly face-on: tall rectangular steel cabinet, matte dark charcoal-gray textured powder coat with subtle orange-peel texture, softly rounded body edges, a thin dark shadow gap around a closed flush door. ONE long continuous vertical barrel hinge running nearly the full height of the door's right edge, exactly like the reference. On the door, upper-middle slightly right of center: one round combination dial with a white/brushed-silver engraved ring with fine black tick marks (no readable numerals), a black knurled center knob, set into a black oval escutcheon; a small fixed triangular index mark at 12 o'clock above the ring; a black horizontal lever handle extending left from the escutcheon; a small key lock just below the dial. No logo, no brand name, no text, no stickers. Small dark rubber feet under the base. Realistic minor wear: faint scuffs, a few fine scratches, slight dust. The safe sits centered on a faded, worn red-and-beige Persian rug laid on worn, scratched oak floorboards, against a warm gray, slightly uneven old lime-plaster wall with a low wooden skirting board. Soft diffuse window light from the upper left, natural falloff, soft contact shadow on the rug and a soft shadow to the right on the wall. Framing: the safe occupies only about half of the image height, centered, with clear wall visible above it and clear rug visible below it and on both sides. Natural, slightly muted color, fine film grain, realistic photographic depth."
     },
     {
-      "file": "interior-room.jpg",
-      "inputs": ["dial-room.jpg"],
+      "file": "heavy/interior.jpg",
+      "inputs": ["heavy/closed.jpg"],
       "prompt": "Precise photo edit of the input photograph. Remove ONLY the closed front door of the safe (the large flat gray door panel together with its dial, black escutcheon, lever handle, key lock and key), revealing the safe's interior through the now-empty door opening. The door is completely gone: not open at the side, not visible anywhere. Inside the opening: a realistic modern fire-safe interior \u2014 dark charcoal-gray steel walls with a light gray fire-insulation lining edge visible around the inner rim of the opening, one sturdy dark gray steel horizontal shelf across the middle at about 55% of the opening height, upper and lower compartments completely EMPTY, back wall in natural shadow, soft light from the upper left reaching the shelf's front edge and inner left wall. The two right-side hinge knuckles stay attached to the cabinet's right frame edge. Keep EVERYTHING else pixel-identical and aligned with the input: the outer cabinet body and frame, its size and position, the rubber feet, the rug, the oak floor, the skirting board, the plaster wall, the camera, crop and lighting. No objects inside, no gold, no coins, no papers, no text, no logo. Real photograph, not CGI."
     },
     {
-      "file": "gold-room.jpg",
-      "inputs": ["interior-room.jpg"],
+      "file": "heavy/gold.jpg",
+      "inputs": ["heavy/interior.jpg"],
       "prompt": "Precise photo edit of the input photograph. Add ONE SINGLE realistic gold bullion bar resting on the existing middle steel shelf inside the open safe, slightly right of center, long axis horizontal, about one fifth of the shelf width. Squat trapezoidal cast ingot, warm rich gold with subtle rubbed wear and slightly uneven cast edges, no readable text or logo. Lit by the same soft light from the upper left, with a soft dark contact shadow on the shelf. Understated and real, no glow, no sparkle. Keep EVERYTHING else pixel-identical: the empty lower compartment, the shelf, the lining, the cabinet, hinges, feet, rug, floor, wall, camera and lighting. Only one bar, no coins, no door. Real photograph."
     },
     {
-      "file": "brass-room.jpg",
-      "inputs": ["interior-room.jpg"],
+      "file": "heavy/brass.jpg",
+      "inputs": ["heavy/interior.jpg"],
       "prompt": "Precise photo edit of the input photograph. Add a small handful of common BRASS COINS on the existing middle steel shelf inside the open safe, slightly right of center: one short uneven stack of about seven coins and five or six loose coins scattered beside it. Aged, subdued yellow-brown brass, thin round stamped coins with rubbed edges, clearly coins and not bullion, not bright gold. Same soft light from the upper left, small grounded shadows. Keep EVERYTHING else pixel-identical: the empty lower compartment, the shelf, the lining, the cabinet, hinges, feet, rug, floor, wall, camera and lighting. No gold bar, no door, no glow. Real photograph."
     },
     {
-      "file": "keypad-room.jpg",
-      "inputs": ["dial-room.jpg"],
-      "prompt": "Precise photo edit of the input photograph. Replace ONLY the round combination dial, its white ring, the key lock and the hanging key with an electronic keypad set into the same black escutcheon: a recessed dark smoked-glass readout at the top with a faint warm ember-orange glow and NO characters, and below it ten small dull black rubber keys in a 3x3 grid with a single 0 key centered underneath, engraved legible numerals 1 2 3 / 4 5 6 / 7 8 9 / 0. The black horizontal lever handle on the left stays exactly as it is. The keypad occupies roughly the same area as the old dial. Restrained real consumer-safe electronics, no neon, no sci-fi. Keep EVERYTHING else pixel-identical: the door panel, its position and size, the hinges, the cabinet, feet, rug, floor, wall, camera and lighting. No logo, no other text. Real photograph."
-    },
-    {
-      "file": "rear-room.jpg",
-      "inputs": ["dial-room.jpg", "user reference photo"],
+      "file": "heavy/rear.jpg",
+      "inputs": ["heavy/closed.jpg", "user reference photo"],
       "prompt": "Precise photo edit of the first input photograph. Within ONLY the closed door panel, remove the dial, black escutcheon, lever handle, key lock and key, and instead show the INSIDE FACE of this same door, as if the door had been turned around and placed flush in its frame: a flat dark charcoal-gray steel inner panel with a slightly raised rectangular inner cover plate, and SIX round chrome locking bolts protruding from the door's LEFT edge, evenly spaced from top to bottom, like the bolts visible in the second reference image. A couple of small screws on the cover plate. No dial, no handle, no keypad, no text, no logo. Keep the door rectangle's size and position, and EVERYTHING outside the door, pixel-identical: cabinet frame, hinges, feet, rug, floor, wall, camera and lighting. Straight-on, real photograph."
     }
   ]

@@ -62,6 +62,26 @@ test('0–40 values wrap in both directions and meter peaks at correct value', (
   assert.ok(signal(run, DOORS[1]) > .8);
   assert.equal(signal({ ...run, value: 40 }, DOORS[1]), 1);
 });
+test('seven tiers, each with its own safe model, get harder, pricier, and slightly richer in gold', () => {
+  assert.equal(DOORS.length, 7);
+  assert.equal(new Set(DOORS.map(d => d.model)).size, 7);
+  const paid = DOORS.filter(d => d.cost);
+  for (let i = 1; i < paid.length; i++) {
+    assert.ok(paid[i].cost > paid[i - 1].cost); assert.ok(paid[i].brass > paid[i - 1].brass);
+    assert.ok(paid[i].goldChance >= paid[i - 1].goldChance); assert.ok(paid[i].goldChance < .5);
+  }
+  const vault = DOORS.find(d => d.id === 'vault'), royal = DOORS.find(d => d.id === 'royal');
+  assert.equal(finish(vault, .349).loot, 'gold'); assert.equal(finish(vault, .35).loot, 'brass');
+  assert.equal(finish(royal, .379).loot, 'gold'); assert.equal(finish(royal, .38).loot, 'brass');
+  assert.equal(finish(vault, .9).reward, 480); assert.equal(finish(royal, .9).reward, 650);
+});
+test('saves from before the vault and royal tiers keep their progress', () => {
+  const old = { ...freshSave(), brass: 512, gold: 3, doors: { street: 2, keypad: 0, heavy: 1, treasury: 4 } };
+  const loaded = loadSave({ getItem: () => JSON.stringify(old) });
+  assert.equal(loaded.brass, 512); assert.equal(loaded.gold, 3);
+  assert.deepEqual(loaded.doors, { street: 2, keypad: 0, heavy: 1, treasury: 4, vault: 0, royal: 0 });
+  assert.deepEqual(loadSave({ getItem: () => JSON.stringify({ ...old, doors: { ...old.doors, royal: -2 } }) }), freshSave());
+});
 test('invalid saved balances, inventory, and tool data recover a fresh game', () => {
   for (const data of [{}, { ...freshSave(), brass: -1 }, { ...freshSave(), doors: null }, { ...freshSave(), tools: ['unknown'] }]) {
     assert.deepEqual(loadSave({ getItem: () => JSON.stringify(data) }), freshSave());

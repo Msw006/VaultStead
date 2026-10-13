@@ -1,23 +1,28 @@
 export const SAVE_KEY = 'vaultstead.workshop.v1';
 export const DOORS = [
-  { id: 'practice', name: 'Practice wheel', kind: 'dial', pins: 3, cost: 0, brass: 0, goldChance: 0, difficulty: 'A place to begin', short: 'Practice', description: 'Learn the turn. Nothing to lose, nothing to earn.' },
-  { id: 'street', name: 'Street locker', kind: 'dial', pins: 3, cost: 70, brass: 100, goldChance: .20, difficulty: 'Three-number combination', short: 'Street', description: 'An old iron door. A good ear goes a long way.' },
-  { id: 'keypad', name: 'Keypad safe', kind: 'pad', pins: 4, cost: 90, brass: 125, goldChance: .20, difficulty: 'Four-digit combination', short: 'Keypad', description: 'Old iron. New wiring. Follow the ember.' },
-  { id: 'heavy', name: 'Counting-house vault', kind: 'dial', pins: 4, cost: 180, brass: 250, goldChance: .27, difficulty: 'Four-number combination', short: 'Heavy', description: 'A heavier door with a little more waiting inside.' },
-  { id: 'treasury', name: 'Treasury safe', kind: 'pad', pins: 5, cost: 260, brass: 350, goldChance: .32, difficulty: 'Five-digit combination', short: 'Treasury', description: 'Five tumblers. One quiet moment of triumph.' },
+  { id: 'practice', model: 'practice', name: 'Practice wheel', kind: 'dial', pins: 3, cost: 0, brass: 0, goldChance: 0, difficulty: 'A place to begin', short: 'Practice', description: 'Learn the turn. Nothing to lose, nothing to earn.' },
+  { id: 'street', model: 'street', name: 'Street locker', kind: 'dial', pins: 3, cost: 70, brass: 100, goldChance: .20, difficulty: 'Three-number combination', short: 'Street', description: 'An old iron door. A good ear goes a long way.' },
+  { id: 'keypad', model: 'keypad', name: 'Keypad safe', kind: 'pad', pins: 4, cost: 90, brass: 125, goldChance: .20, difficulty: 'Four-digit combination', short: 'Keypad', description: 'Old iron. New wiring. Follow the ember.' },
+  { id: 'heavy', model: 'heavy', name: 'Counting-house vault', kind: 'dial', pins: 4, cost: 180, brass: 250, goldChance: .27, difficulty: 'Four-number combination', short: 'Heavy', description: 'A heavier door with a little more waiting inside.' },
+  { id: 'treasury', model: 'treasury', name: 'Treasury safe', kind: 'pad', pins: 5, cost: 260, brass: 350, goldChance: .32, difficulty: 'Five-digit combination', short: 'Treasury', description: 'Five tumblers. One quiet moment of triumph.' },
+  { id: 'vault', model: 'vault', name: 'Bank vault', kind: 'pad', pins: 6, cost: 360, brass: 480, goldChance: .35, difficulty: 'Six-digit combination', short: 'Vault', description: 'Round steel, six digits, and a long quiet corridor behind it.' },
+  { id: 'royal', model: 'royal', name: 'Royal strongbox', kind: 'dial', pins: 5, cost: 480, brass: 650, goldChance: .38, difficulty: 'Five-number combination', short: 'Royal', description: 'Gilt and lacquer. Five patient turns for the finest ear.' },
 ];
 export const TOOLS = [
   { id: 'stethoscope', name: 'Stethoscope', cost: 120, description: 'Hear a dial tumbler settle. Adds a live listening meter.' },
   { id: 'probe', name: 'Signal probe', cost: 100, description: 'Read the strength of an electronic lock’s signal.' },
 ];
-export function freshSave() { return { version: 1, brass: 240, gold: 0, doors: { street: 1, keypad: 1, heavy: 0, treasury: 0 }, tools: ['stethoscope'], opens: 0, seizures: 0, history: [] }; }
+export function freshSave() { return { version: 1, brass: 240, gold: 0, doors: { street: 1, keypad: 1, heavy: 0, treasury: 0, vault: 0, royal: 0 }, tools: ['stethoscope'], opens: 0, seizures: 0, history: [] }; }
 export function loadSave(storage) {
   try {
     const data = JSON.parse(storage.getItem(SAVE_KEY));
     if (data?.version !== 1 || !Number.isSafeInteger(data.brass) || data.brass < 0 || !Number.isSafeInteger(data.gold) || data.gold < 0) return freshSave();
-    if (!data.doors || DOORS.filter(d => d.cost).some(d => !Number.isSafeInteger(data.doors[d.id]) || data.doors[d.id] < 0)) return freshSave();
+    if (!data.doors || typeof data.doors !== 'object') return freshSave();
+    // Saves from before a tier existed simply own none of that door.
+    const doors = Object.fromEntries(DOORS.filter(d => d.cost).map(d => [d.id, data.doors[d.id] ?? 0]));
+    if (Object.values(doors).some(n => !Number.isSafeInteger(n) || n < 0)) return freshSave();
     if (!Array.isArray(data.tools) || data.tools.some(t => !TOOLS.some(tool => tool.id === t))) return freshSave();
-    return { ...freshSave(), ...data, history: Array.isArray(data.history) ? data.history.slice(0, 12) : [] };
+    return { ...freshSave(), ...data, doors, history: Array.isArray(data.history) ? data.history.slice(0, 12) : [] };
   } catch { return freshSave(); }
 }
 export const wrap = (value, size = 41) => ((value % size) + size) % size;
