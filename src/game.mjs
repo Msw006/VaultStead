@@ -1,17 +1,17 @@
 export const SAVE_KEY = 'vaultstead.workshop.v1';
 // reach: how far the tool reading carries. decoys: false teeth per dial number. worn: falsely worn keys. alarm: seconds after the first key press.
 export const DOORS = [
-  { id: 'practice', model: 'practice', name: 'Practice wheel', kind: 'dial', pins: 3, cost: 0, brass: 0, goldChance: 0, reach: 9, decoys: 0, difficulty: 'A place to begin', short: 'Practice', description: 'Learn the turn. Nothing to lose, nothing to earn.' },
-  { id: 'street', model: 'street', name: 'Street locker', kind: 'dial', pins: 3, cost: 70, brass: 100, goldChance: .20, reach: 6, decoys: 0, difficulty: 'Three-number combination', short: 'Street', description: 'An old iron door. A good ear goes a long way.' },
-  { id: 'keypad', model: 'keypad', name: 'Keypad safe', kind: 'pad', pins: 4, cost: 90, brass: 125, goldChance: .20, reach: 2, worn: 0, alarm: 0, difficulty: 'Four-digit combination', short: 'Keypad', description: 'Old iron. New wiring. Follow the ember.' },
-  { id: 'heavy', model: 'heavy', name: 'Counting-house vault', kind: 'dial', pins: 4, cost: 180, brass: 250, goldChance: .27, reach: 4, decoys: 1, difficulty: 'Four-number combination', short: 'Heavy', description: 'A heavier door with a little more waiting inside.' },
-  { id: 'treasury', model: 'treasury', name: 'Treasury safe', kind: 'pad', pins: 5, cost: 260, brass: 350, goldChance: .32, reach: 1, worn: 1, alarm: 90, difficulty: 'Five-digit combination', short: 'Treasury', description: 'Five tumblers. One quiet moment of triumph.' },
-  { id: 'vault', model: 'vault', name: 'Bank vault', kind: 'pad', pins: 6, cost: 360, brass: 480, goldChance: .35, reach: 1, worn: 2, alarm: 75, difficulty: 'Six-digit combination', short: 'Vault', description: 'Round steel, six digits, and a long quiet corridor behind it.' },
-  { id: 'royal', model: 'royal', name: 'Royal strongbox', kind: 'dial', pins: 5, cost: 480, brass: 650, goldChance: .38, reach: 3, decoys: 2, difficulty: 'Five-number combination', short: 'Royal', description: 'Gilt and lacquer. Five patient turns for the finest ear.' },
+  { id: 'practice', model: 'practice', name: 'Practice safe', kind: 'dial', pins: 3, cost: 0, brass: 0, goldChance: 0, reach: 9, decoys: 0, difficulty: 'Code: 3 numbers', short: 'Practice', description: 'Learn how the dial works. It is free and gives no reward.' },
+  { id: 'street', model: 'street', name: 'Street safe', kind: 'dial', pins: 3, cost: 70, brass: 100, goldChance: .20, reach: 6, decoys: 0, difficulty: 'Code: 3 numbers', short: 'Street', description: 'An old iron safe. Listen for one soft click on each number.' },
+  { id: 'keypad', model: 'keypad', name: 'Keypad safe', kind: 'pad', pins: 4, cost: 90, brass: 125, goldChance: .20, reach: 2, worn: 0, alarm: 0, difficulty: 'Code: 4 digits', short: 'Keypad', description: 'An old safe with a keypad. The worn keys show the digits.' },
+  { id: 'heavy', model: 'heavy', name: 'Heavy safe', kind: 'dial', pins: 4, cost: 180, brass: 250, goldChance: .27, reach: 4, decoys: 1, difficulty: 'Code: 4 numbers', short: 'Heavy', description: 'A heavy steel safe. Each number has one fake click.' },
+  { id: 'treasury', model: 'treasury', name: 'Treasury safe', kind: 'pad', pins: 5, cost: 260, brass: 350, goldChance: .32, reach: 1, worn: 1, alarm: 90, difficulty: 'Code: 5 digits', short: 'Treasury', description: 'A tall keypad safe. One worn key is a trap. Alarm: 90 seconds.' },
+  { id: 'vault', model: 'vault', name: 'Bank vault', kind: 'pad', pins: 6, cost: 360, brass: 480, goldChance: .35, reach: 1, worn: 2, alarm: 75, difficulty: 'Code: 6 digits', short: 'Vault', description: 'A round bank vault door. Two worn keys are traps. Alarm: 75 seconds.' },
+  { id: 'royal', model: 'royal', name: 'Royal safe', kind: 'dial', pins: 5, cost: 480, brass: 650, goldChance: .38, reach: 3, decoys: 2, difficulty: 'Code: 5 numbers', short: 'Royal', description: 'The hardest safe. Each number has two fake clicks.' },
 ];
 export const TOOLS = [
-  { id: 'stethoscope', name: 'Stethoscope', cost: 35, description: 'One dial door. The true tumbler lands as a deep thunk, and the listening meter lights.' },
-  { id: 'probe', name: 'Signal probe', cost: 30, description: 'One keypad door. Reads each key as cold, warm, or locked on.' },
+  { id: 'stethoscope', name: 'Stethoscope', cost: 35, description: 'For one dial safe. The correct number makes a deep sound, and a meter shows how close you are.' },
+  { id: 'probe', name: 'Signal probe', cost: 30, description: 'For one keypad safe. Shows if a key is far, close, or correct.' },
 ];
 export const toolFor = door => door.kind === 'dial' ? 'stethoscope' : 'probe';
 export function freshSave() { return { version: 1, brass: 240, gold: 0, doors: { street: 1, keypad: 1, heavy: 0, treasury: 0, vault: 0, royal: 0 }, tools: { stethoscope: 1, probe: 0 }, opens: 0, seizures: 0, history: [] }; }
@@ -73,10 +73,10 @@ export function setNumber(run, door, random = Math.random, now = Date.now()) {
   if (run.value !== target || !correctDirection) {
     const misses = run.misses + 1;
     const seized = misses >= 3 && door.id !== 'practice';
-    return { run: { ...run, misses, status: seized ? 'seized' : 'active', cause: seized ? 'misses' : '', clue: !correctDirection ? 'The direction was wrong. Follow the turn arrow.' : 'The tumbler slipped. Listen for the strongest signal.', dir: 0, rounds: run.rounds + 1 }, outcome: seized ? 'seized' : 'miss' };
+    return { run: { ...run, misses, status: seized ? 'seized' : 'active', cause: seized ? 'misses' : '', clue: !correctDirection ? 'Wrong direction. Look at the arrow.' : 'Wrong number. Try again.', dir: 0, rounds: run.rounds + 1 }, outcome: seized ? 'seized' : 'miss' };
   }
   const locked = [...run.locked, run.value];
-  if (locked.length < door.pins) return { run: { ...run, locked, dir: 0, value: door.kind === 'pad' ? -1 : run.value, clue: 'A quiet click. The next tumbler is waiting.', rounds: run.rounds + 1 }, outcome: 'pin' };
+  if (locked.length < door.pins) return { run: { ...run, locked, dir: 0, value: door.kind === 'pad' ? -1 : run.value, clue: 'Correct! Now find the next one.', rounds: run.rounds + 1 }, outcome: 'pin' };
   const loot = door.id === 'practice' ? 'empty' : random() < door.goldChance ? 'gold' : 'brass';
   return { run: { ...run, locked, status: 'open', loot, reward: loot === 'brass' ? door.brass : loot === 'gold' ? 1 : 0, clue: '', rounds: run.rounds + 1 }, outcome: 'open' };
 }
