@@ -114,6 +114,11 @@ h3 { font: 22px/1.3 var(--serif); letter-spacing: -.4px; }
 .keypad button:last-child { grid-column: 2; }
 .keypad button:hover { background: #e5e0d2; }
 .keypad button.selected { color: #956e43; background: #e9e0cd; border-color: #b5a788; }
+.keypad button.worn { color: #8c8778; background: radial-gradient(ellipse 55% 45% at 46% 54%, #c9bfa5aa, #dcd5c2 60%, #eeece4); }
+.keypad button.worn.selected { color: #956e43; background: radial-gradient(ellipse 55% 45% at 46% 54%, #c4b493, #e9e0cd 70%); }
+.alarm-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 7px 10px; border: 1px solid #e0dccf; font-size: 9px; letter-spacing: .4px; color: #979383; }
+.alarm-row.is-armed { border-color: #c99b84; color: #9a4f35; background: #f6ebe4; }
+.alarm-row strong { font-family: 'Courier New', monospace; font-size: 15px; }
 .tool-offer { border: 0; background: transparent; font-size: 8px; color: #93814f; padding: 9px 0 0; display: flex; align-items: center; gap: 5px; }
 .tool-offer span { margin-left: auto; }
 .field-notes { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 22px; padding: 24px 0; border-bottom: 1px solid var(--line); gap: 24px; }

@@ -19,7 +19,9 @@ Open `http://127.0.0.1:4178`. In the current NomStead workspace, the build also 
 ## Mechanics
 
 - Dial: 0–40, drag right for clockwise, Lower / Higher, then Set number. Direction alternates after each successful number. The current value moves beneath the fixed upper index.
-- Electronic: digits 0–9, ember readout, then Lock digit. The signal probe adds a live signal meter.
+- Dial sound: every step ticks. Turning in the required direction, the true tooth clicks duller. The counting-house vault hides one false tooth per number and the royal strongbox two; by ear they sound the same as the true one. With a stethoscope, the true tooth is a deep thunk, false teeth a hollow clack, and the listening meter lights (false teeth peak at 70%).
+- Electronic: digits 0–9, ember readout, then Lock digit. Worn keys show the digits in the code; the treasury adds one falsely worn key and the bank vault two. Their alarms arm at the first key press (treasury 90 s, bank vault 75 s) and seize the door when they run out. The signal probe reads each key as cold, warm, or locked on; warm reaches two digits on the keypad safe and one on the treasury and bank vault.
+- Tools are single-use: a stethoscope or probe is spent on one door attempt, and handed back if you leave the attempt before setting a number or missing. Stethoscope 35 brass, probe 30. The practice wheel lends its tools free.
 - Three misses seize a real door. Successful opens also use one owned door. Practice is unlimited, reveals its training combination, and pays nothing.
 - Seven safes, each with its own photographed cabinet, rise in difficulty, price, and gold chance:
 
@@ -34,8 +36,8 @@ Open `http://127.0.0.1:4178`. In the current NomStead workspace, the build also 
   | Royal strongbox | 5-number dial | 480 | 650 | 38% |
 
 - Most real opens pay brass. A gold payout contains one bar and no brass coins. A brass payout contains coins and no gold bar.
-- Brass buys doors and permanent tools. Cash packs are listed and not for sale.
-- New games start with 240 brass, one street door, one keypad door, and an equipped stethoscope. Saves from before the bank vault and royal strongbox load with zero doors for those tiers. This is a standalone browser prototype; in-game gold is a local reward, with no on-chain transaction.
+- Brass buys doors and single-use tools. Cash packs are listed and not for sale.
+- New games start with 240 brass, one street door, one keypad door, and one stethoscope. Saves from before the bank vault and royal strongbox load with zero doors for those tiers, and saves from when tools were permanent get one use of each tool they owned. This is a standalone browser prototype; in-game gold is a local reward, with no on-chain transaction.
 
 Prices and common payouts are prototype choices because no prior game repository or economy was supplied. See `src/game.mjs` for the complete definitions.
 
@@ -68,7 +70,7 @@ The room and cabinet do not move. Each door rotates on its own hinge as one phot
 
 ## Checks
 
-`npm test` covers alternating directions, seizures, free practice, separate gold/brass rewards, 20% and higher-tier gold thresholds, keypad rules, permanent tool purchases, affordability, value wrapping, damaged saves, the seven-tier progression, and migration of older saves. Browser verification checks the visible plate states and playable practice sequence.
+`npm test` covers alternating directions, seizures, free practice, separate gold/brass rewards, 20% and higher-tier gold thresholds, keypad rules, single-use tools and refunds, dial teeth and false teeth, worn keys, coarse probe readings, the alarm, affordability, value wrapping, damaged saves, the seven-tier progression, and migration of older saves. Browser verification checks the visible plate states and playable practice sequence.
 
 Browser QA also verified a mobile rightward drag from 0 to 10 (positive 87.8° rotation), no horizontal overflow at 390px, a probe purchase (240 → 140 brass), and a complete four-digit keypad open (140 → 265 brass, one door consumed). For the seven-tier set, it verified every closed and open plate, the six-slot bank vault combination and readout, and a rightward royal dial drag from 0 to 10. Inspection screenshots are saved in `docs/verification/`.
 

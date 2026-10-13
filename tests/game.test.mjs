@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DOORS, freshSave, makeRun, setNumber, signal, settle, purchase, loadSave, wrap } from '../src/game.mjs';
+import { DOORS, freshSave, makeRun, setNumber, signal, settle, purchase, loadSave, wrap, spendTool, abandon, contact, press, expire } from '../src/game.mjs';
 
 function finish(door, lootRoll) {
   let run = makeRun(door, () => .3);
@@ -49,12 +49,65 @@ test('heavier doors have higher gold odds; keypad ignores turn direction', () =>
   const run = makeRun(DOORS[2], () => .3);
   assert.equal(setNumber({ ...run, value: 3, dir: 0 }, DOORS[2]).outcome, 'pin');
 });
-test('purchases check affordability and permanent tools cannot be bought twice', () => {
+test('purchases check affordability, and each tool bought adds one use', () => {
   const original = freshSave(); const bought = purchase(original, 'probe', 'tool');
-  assert.equal(bought.brass, 140); assert.ok(bought.tools.includes('probe'));
-  assert.equal(purchase(bought, 'probe', 'tool'), bought);
-  assert.equal(purchase(bought, 'treasury', 'door'), bought);
+  assert.equal(bought.brass, 210); assert.equal(bought.tools.probe, 1);
+  assert.equal(purchase(bought, 'probe', 'tool').tools.probe, 2);
+  assert.equal(purchase({ ...bought, brass: 20 }, 'probe', 'tool').tools.probe, 1);
+  assert.equal(purchase({ ...bought, brass: 100 }, 'treasury', 'door').doors.treasury, 0);
   assert.equal(purchase(bought, 'street', 'door').doors.street, 2);
+});
+test('a tool is spent on one door, returned only if the attempt is left untouched, and free on practice', () => {
+  const door = DOORS[1]; const save = freshSave(); const run = makeRun(door, () => .3);
+  const used = spendTool(save, run, door);
+  assert.equal(used.save.tools.stethoscope, 0); assert.equal(used.run.tool, 'stethoscope');
+  assert.deepEqual(spendTool(used.save, used.run, door), used);
+  assert.equal(abandon(used.save, used.run).tools.stethoscope, 1);
+  const touched = setNumber({ ...used.run, value: 0, dir: 1 }, door).run;
+  assert.equal(abandon(used.save, touched), used.save);
+  const keypad = DOORS[2]; assert.equal(spendTool(save, makeRun(keypad), keypad).run.tool, null);
+  const practice = spendTool(save, makeRun(DOORS[0]), DOORS[0]); assert.equal(practice.save, save);
+});
+test('saves from when tools were permanent turn each owned tool into one use', () => {
+  const old = { ...freshSave(), tools: ['stethoscope', 'probe'] };
+  assert.deepEqual(loadSave({ getItem: () => JSON.stringify(old) }).tools, { stethoscope: 1, probe: 1 });
+  assert.deepEqual(loadSave({ getItem: () => JSON.stringify({ ...old, tools: { stethoscope: -1 } }) }), freshSave());
+});
+test('the dial tooth only sounds in the required direction, and heavier dials hide false teeth', () => {
+  const street = DOORS[1], heavy = DOORS[3], royal = DOORS[6];
+  const run = makeRun(street, () => .3), t = run.targets[0];
+  assert.equal(contact(run, street, t, 1), 'gate'); assert.equal(contact(run, street, t, -1), null);
+  assert.equal(contact(run, street, wrap(t + 1), 1), null);
+  assert.equal(makeRun(heavy, () => .3).decoys[0].length, 1);
+  const royalRun = makeRun(royal, () => .3);
+  for (const [i, decoys] of royalRun.decoys.entries()) {
+    assert.equal(decoys.length, 2); assert.ok(!decoys.includes(royalRun.targets[i]));
+    const atPin = { ...royalRun, locked: royalRun.targets.slice(0, i) };
+    for (const n of decoys) assert.equal(contact(atPin, royal, n, i % 2 ? -1 : 1), 'decoy');
+  }
+});
+test('keypads show worn digits, harder keypads add false wear, and the probe reads coarsely', () => {
+  for (const door of DOORS.filter(d => d.kind === 'pad')) {
+    const run = makeRun(door, Math.random);
+    for (const t of run.targets) assert.ok(run.worn.includes(t));
+    assert.equal(run.worn.length, new Set(run.targets).size + door.worn);
+  }
+  const keypad = DOORS[2]; const run = { ...makeRun(keypad, () => .5), value: 5 };
+  assert.equal(signal(run, keypad), 1);
+  assert.equal(signal({ ...run, value: 7 }, keypad), .55);
+  assert.equal(signal({ ...run, value: 8 }, keypad), .1);
+});
+test('the treasury alarm arms at the first key and seizes the door when it runs out', () => {
+  const door = DOORS.find(d => d.id === 'treasury');
+  let run = press(makeRun(door, () => .3), door, 3, 1000);
+  assert.equal(run.deadline, 1000 + door.alarm * 1000);
+  assert.equal(press(run, door, 4, 5000).deadline, run.deadline);
+  assert.equal(expire(run, door, run.deadline - 1), run);
+  const late = setNumber(run, door, Math.random, run.deadline);
+  assert.equal(late.outcome, 'seized'); assert.equal(late.run.cause, 'alarm');
+  const owned = { ...freshSave(), doors: { ...freshSave().doors, treasury: 1 } };
+  const after = settle(owned, late.run, door); assert.equal(after.doors.treasury, 0); assert.equal(after.seizures, 1);
+  assert.equal(press(makeRun(DOORS[2]), DOORS[2], 3, 1000).deadline, null);
 });
 test('0–40 values wrap in both directions and meter peaks at correct value', () => {
   assert.equal(wrap(41), 0); assert.equal(wrap(-1), 40);

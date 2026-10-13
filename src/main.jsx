@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SafeStage, safeAsset, SAFE_LOOKS } from './components/vault/safe-stage';
-import { DOORS, TOOLS, SAVE_KEY, loadSave, makeRun, signal, wrap, setNumber, settle, purchase } from './game.mjs';
+import { DOORS, TOOLS, SAVE_KEY, loadSave, makeRun, signal, wrap, setNumber, settle, purchase, toolFor, contact, press, expire, spendTool, abandon } from './game.mjs';
 import './style.css';
 
 const storage = (() => {
@@ -30,12 +30,40 @@ function Icon({ name, size = 20, ...rest }) {
 }
 function Brand() { return <span className="brand"><span className="brand-mark"><Icon name="shelf" size={27}/></span><span>Vaultstead<span className="brand-caption">THE ART OF THE OPEN</span></span></span>; }
 function Coin({ gold = false }) { return <span className={gold ? 'gold-ingot' : 'brass-coin'} aria-hidden="true"/>; }
-let audio;
+let audio, noiseBuffer;
+function burst(t, frequency, length, level, q) {
+  if (!noiseBuffer) {
+    noiseBuffer = audio.createBuffer(1, audio.sampleRate * .2, audio.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  }
+  const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  source.buffer = noiseBuffer; filter.type = 'bandpass'; filter.frequency.value = frequency; filter.Q.value = q;
+  gain.gain.setValueAtTime(level, t); gain.gain.exponentialRampToValueAtTime(.0001, t + length);
+  source.connect(filter); filter.connect(gain); gain.connect(audio.destination);
+  source.start(t); source.stop(t + length + .02);
+}
+function knock(t, from, to, length, level, type = 'sine') {
+  const oscillator = audio.createOscillator(), gain = audio.createGain();
+  oscillator.type = type; oscillator.frequency.setValueAtTime(from, t); oscillator.frequency.exponentialRampToValueAtTime(to, t + length);
+  gain.gain.setValueAtTime(level, t); gain.gain.exponentialRampToValueAtTime(.0001, t + length);
+  oscillator.connect(gain); gain.connect(audio.destination);
+  oscillator.start(t); oscillator.stop(t + length + .02);
+}
+// tick: a plain step. dull: a tooth heard by ear, true or false alike. gate / decoy: the same teeth through a stethoscope.
+const DIAL_SOUNDS = {
+  tick: t => burst(t, 3400, .018, .12, 8),
+  dull: t => burst(t, 2200, .035, .2, 5),
+  gate: t => { knock(t, 170, 55, .14, .3); burst(t, 900, .05, .25, 3); },
+  decoy: t => { burst(t, 1700, .03, .25, 4); knock(t, 560, 420, .05, .06, 'triangle'); },
+  key: t => knock(t, 1250, 1250, .045, .025, 'square'),
+};
 function playTone(type, active) {
   if (!active) return;
   try {
     audio ||= new (window.AudioContext || window.webkitAudioContext)();
     if (audio.state === 'suspended') audio.resume();
+    if (DIAL_SOUNDS[type]) { DIAL_SOUNDS[type](audio.currentTime); return; }
     const oscillator = audio.createOscillator(), gain = audio.createGain();
     oscillator.connect(gain); gain.connect(audio.destination);
     oscillator.type = 'triangle';
@@ -49,27 +77,28 @@ function readRun(save) {
   try {
     const saved = JSON.parse(storage.getItem(SAVE_KEY + '.run'));
     const door = DOORS.find(d => d.id === saved?.doorId);
-    if (door && saved.status === 'active' && (door.id === 'practice' || save.doors[door.id] > 0) && saved.targets?.length === door.pins && saved.targets.every(n => Number.isInteger(n) && n >= 0 && n <= (door.kind === 'dial' ? 40 : 9)) && Array.isArray(saved.locked) && saved.locked.length < door.pins && Number.isInteger(saved.misses) && saved.misses >= 0 && (saved.misses < 3 || door.id === 'practice') && Number.isInteger(saved.value) && saved.value >= (door.kind === 'pad' ? -1 : 0) && saved.value <= (door.kind === 'pad' ? 9 : 40) && [-1, 0, 1].includes(saved.dir)) return saved;
+    const extras = [null, 'stethoscope', 'probe'].includes(saved?.tool) && (saved.deadline === null || Number.isFinite(saved.deadline)) && (door?.kind === 'dial' ? saved.decoys?.length === door.pins : Array.isArray(saved?.worn));
+    if (door && extras && saved.status === 'active' && (door.id === 'practice' || save.doors[door.id] > 0) && saved.targets?.length === door.pins && saved.targets.every(n => Number.isInteger(n) && n >= 0 && n <= (door.kind === 'dial' ? 40 : 9)) && Array.isArray(saved.locked) && saved.locked.length < door.pins && Number.isInteger(saved.misses) && saved.misses >= 0 && (saved.misses < 3 || door.id === 'practice') && Number.isInteger(saved.value) && saved.value >= (door.kind === 'pad' ? -1 : 0) && saved.value <= (door.kind === 'pad' ? 9 : 40) && [-1, 0, 1].includes(saved.dir)) return saved;
   } catch { /* fresh game */ }
   return makeRun(DOORS[save.doors.street ? 1 : save.doors.keypad ? 2 : 0]);
 }
 
 function ListeningMeter({ strength, kind, available }) {
-  const phrase = !available ? 'Tool not equipped' : strength === 1 ? 'Tumbler aligned' : strength > .7 ? 'Almost there' : strength > .3 ? 'A faint response' : 'Listen closely';
+  const phrase = !available ? 'Tool not in use' : kind === 'pad' ? strength === 1 ? 'Locked on' : strength > .3 ? 'Warm' : 'Cold' : strength === 1 ? 'Tumbler aligned' : strength > .7 ? 'Almost there' : strength > .3 ? 'A faint response' : 'Listen closely';
   return <div className={`listening ${strength === 1 && available ? 'is-aligned' : ''}`}>
     <div className="meter-label"><span><Icon name="ear" size={15}/>{kind === 'dial' ? 'LISTENING METER' : 'SIGNAL STRENGTH'}</span><span className="signal-light"/></div>
     <div className="meter-bars" role="meter" aria-label={kind === 'dial' ? 'Listening meter' : 'Signal strength'} aria-valuemin={0} aria-valuemax={100} aria-valuenow={available ? Math.round(strength * 100) : 0}>
       {Array.from({ length: 35 }, (_, i) => { const wave = Math.sin(i * 1.55) * .4 + Math.cos(i * .55) * .25 + .35; return <i key={i} style={{ height: `${available ? 5 + (Math.abs(wave) * 24 + 6) * strength : 5}px`, opacity: available ? .3 + strength * .7 : .2 }} />; })}
     </div>
-    <div className="meter-caption"><span>{phrase}</span><span>{available ? `${Math.round(strength * 100)}%` : '—'}</span></div>
+    <div className="meter-caption"><span>{phrase}</span><span>{available && kind === 'dial' ? `${Math.round(strength * 100)}%` : '—'}</span></div>
   </div>;
 }
 function Help({ close }) {
   return <div className="modal-cover" onClick={close}><section className="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title" onClick={e => e.stopPropagation()}>
     <button className="icon-button modal-close" onClick={close} aria-label="Close instructions"><Icon name="close"/></button>
     <span className="eyebrow">A SMALL FIELD GUIDE</span><h2 id="help-title">The safe speaks.<br/>Learn to listen.</h2>
-    <p>Start with the free practice wheel. Turn the upper dial until the listening meter reaches its peak, then set the number.</p>
-    <ol><li><strong>Follow the direction.</strong> Clockwise first. Counterclockwise next. Alternate for every dial number.</li><li><strong>Listen for alignment.</strong> Your stethoscope is included. For an electronic safe, buy a signal probe or try the digits.</li><li><strong>Mind your misses.</strong> Three misses seize a real door. Practice is unlimited and pays nothing.</li><li><strong>Open, collect, repeat.</strong> Most real opens pay brass. Street and keypad safes have a 1 in 5 gold chance. Heavier doors have slightly better odds.</li></ol>
+    <p>Start with the free practice wheel. Turn the dial slowly and listen for the tooth, then set the number.</p>
+    <ol><li><strong>Follow the direction.</strong> Clockwise first. Counterclockwise next. Alternate for every dial number.</li><li><strong>Listen for the tooth.</strong> Turning the right way, a tumbler tooth clicks duller than the plain tick. The counting-house vault hides one false tooth per number and the royal strongbox two. A stethoscope turns the true tooth into a deep thunk and lights the meter for one door.</li><li><strong>Read the keypad.</strong> Worn keys give away the digits. The treasury and bank vault add false wear, and their alarm arms at the first key press. A signal probe reads cold, warm, or locked on for one door.</li><li><strong>Tools are spent.</strong> Each stethoscope or probe covers one door. Buy another in the counting house. The practice wheel lends them free.</li><li><strong>Mind your misses.</strong> Three misses seize a real door. Practice is unlimited and pays nothing.</li><li><strong>Open, collect, repeat.</strong> Most real opens pay brass. Street and keypad safes have a 1 in 5 gold chance. Heavier doors have slightly better odds.</li></ol>
     <p className="fine-print">This is a browser-local game. Gold bars are in-game rewards. Cash packs are listed in the counting house and are not for sale.</p>
     <button className="primary-button" onClick={close}>Back to the work <Icon name="arrow" size={16}/></button>
   </section></div>;
@@ -86,9 +115,21 @@ function App() {
   const actionLock = useRef(false);
   const door = DOORS.find(d => d.id === run.doorId);
   const strength = signal(run, door);
-  const tool = door.kind === 'dial' ? 'stethoscope' : 'probe';
-  const available = save.tools.includes(tool);
+  const tool = toolFor(door);
+  const available = door.id === 'practice' || run.tool === tool;
   const requiredDirection = run.locked.length % 2 === 0 ? 1 : -1;
+  const [now, setNow] = useState(Date.now);
+  const dialAt = useRef(run.value);
+  dialAt.current = run.value;
+  useEffect(() => {
+    if (run.status !== 'active' || !run.deadline) return;
+    const timer = setInterval(() => {
+      const time = Date.now(); setNow(time);
+      const next = expire(run, door, time);
+      if (next !== run) { setRun(next); setSave(s => settle(s, next, door)); playTone('miss', sound); }
+    }, 250);
+    return () => clearInterval(timer);
+  }, [run, door, sound]);
   useEffect(() => { try { storage.setItem(SAVE_KEY, JSON.stringify(save)); storage.setItem(SAVE_KEY + '.run', JSON.stringify(run)); setDurable(true); } catch { setDurable(false); } }, [save, run]);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [view]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 3400); return () => clearTimeout(timer); }, [notice]);
@@ -96,7 +137,23 @@ function App() {
 
   function turn(value, dir) {
     if (run.status !== 'active') return;
-    setRun(r => ({ ...r, value, dir, clue: '' })); playTone('tick', sound);
+    if (door.kind === 'pad') { setRun(r => press(r, door, value)); playTone('key', sound); return; }
+    // A fast drag can jump several steps in one move; every step it passes still makes its sound.
+    let heard = 'tick';
+    for (let n = dialAt.current; n !== value;) {
+      n = wrap(n + dir);
+      const tooth = contact(run, door, n, dir);
+      if (tooth === 'gate' || (tooth === 'decoy' && heard === 'tick')) heard = tooth;
+    }
+    dialAt.current = value;
+    setRun(r => ({ ...r, value, dir, clue: '' }));
+    playTone(heard === 'tick' ? 'tick' : available ? heard : 'dull', sound);
+  }
+  function applyTool() {
+    const next = spendTool(save, run, door);
+    if (next.run === run) return;
+    setSave(next.save); setRun(next.run);
+    setNotice(`${tool === 'probe' ? 'Signal probe' : 'Stethoscope'} in use for this door.`);
   }
   function commit() {
     if (actionLock.current || run.status !== 'active') return;
@@ -113,13 +170,13 @@ function App() {
     if (run.status === 'active' && (run.locked.length > 0 || run.misses > 0) && next.id !== run.doorId) {
       setNotice('Finish this attempt before changing doors.'); setView('workshop'); return;
     }
-    actionLock.current = false; setRun(makeRun(next)); setView('workshop');
+    actionLock.current = false; setSave(s => abandon(s, run)); setRun(makeRun(next)); setView('workshop');
   }
   function buy(id, category) {
     const next = purchase(save, id, category);
     if (next === save) return;
     setSave(next); const item = (category === 'tool' ? TOOLS : DOORS).find(i => i.id === id);
-    setNotice(`${item.name} ${category === 'tool' ? 'equipped' : 'added to your doors'}.`); playTone('pin', sound);
+    setNotice(`${item.name} ${category === 'tool' ? 'added to your kit' : 'added to your doors'}.`); playTone('pin', sound);
   }
 
   return <div className="app-shell">
@@ -140,14 +197,17 @@ function App() {
               <div className="attempt-row"><span>{door.id === 'practice' ? 'Unlimited practice' : 'Misses'}</span><span className="misses" aria-label={`${run.misses} misses${door.id === 'practice' ? '' : ' out of 3'}`}>{door.id === 'practice' ? <span className="infinity">∞</span> : [0, 1, 2].map(n => <i key={n} className={n < run.misses ? 'used' : ''}/>)}</span></div>
               <div className="combination-label"><span className="eyebrow">THE COMBINATION</span><span>{run.locked.length} / {door.pins}</span></div>
               <div className="combination">{Array.from({ length: door.pins }, (_, i) => <div key={i} className={i < run.locked.length ? 'set' : i === run.locked.length ? 'current' : ''}>{i < run.locked.length ? String(run.locked[i]).padStart(door.kind === 'dial' ? 2 : 1, '0') : i === run.locked.length ? <span className="pin-wait"/> : '—'}{i < run.locked.length && <Icon name="check" size={9}/>}</div>)}</div>
-              {door.kind === 'dial' ? <><div className="turn-instruction"><Icon name="turn" size={16} style={{ transform: requiredDirection === -1 ? 'scaleX(-1)' : undefined }}/><span>Turn {requiredDirection === 1 ? 'clockwise' : 'counterclockwise'}</span><small>{run.locked.length + 1} OF {door.pins}</small></div><div className="dial-controls"><button onClick={() => turn(wrap(run.value - 1), -1)} aria-label="Lower dial value"><Icon name="minus"/><span>Lower</span></button><div className="live-value"><span className="eyebrow">ON THE DIAL</span><strong>{String(run.value).padStart(2, '0')}</strong><small>0 — 40</small></div><button onClick={() => turn(wrap(run.value + 1), 1)} aria-label="Higher dial value"><Icon name="plus"/><span>Higher</span></button></div></> : <><div className="keypad-instruction"><span>Select digit {run.locked.length + 1} of {door.pins}</span><strong>{run.value < 0 ? '−' : run.value}</strong></div><div className="keypad" role="group" aria-label="Electronic keypad">{[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => <button className={run.value === n ? 'selected' : ''} key={n} onClick={() => turn(n, 1)}>{n}</button>)}</div></>}
+              {door.kind === 'dial' ? <><div className="turn-instruction"><Icon name="turn" size={16} style={{ transform: requiredDirection === -1 ? 'scaleX(-1)' : undefined }}/><span>Turn {requiredDirection === 1 ? 'clockwise' : 'counterclockwise'}</span><small>{run.locked.length + 1} OF {door.pins}</small></div><div className="dial-controls"><button onClick={() => turn(wrap(run.value - 1), -1)} aria-label="Lower dial value"><Icon name="minus"/><span>Lower</span></button><div className="live-value"><span className="eyebrow">ON THE DIAL</span><strong>{String(run.value).padStart(2, '0')}</strong><small>0 — 40</small></div><button onClick={() => turn(wrap(run.value + 1), 1)} aria-label="Higher dial value"><Icon name="plus"/><span>Higher</span></button></div></> : <><div className="keypad-instruction"><span>Select digit {run.locked.length + 1} of {door.pins}</span><strong>{run.value < 0 ? '−' : run.value}</strong></div><div className="keypad" role="group" aria-label="Electronic keypad">{[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => <button className={`${run.value === n ? 'selected' : ''} ${run.worn.includes(n) ? 'worn' : ''}`} key={n} onClick={() => turn(n, 1)} aria-label={`${n}${run.worn.includes(n) ? ', worn' : ''}`}>{n}</button>)}</div>
+                {door.alarm > 0 && <div className={`alarm-row ${run.deadline ? 'is-armed' : ''}`} role="timer"><span>{run.deadline ? 'Alarm armed' : `Alarm arms at the first key · ${door.alarm}s`}</span>{run.deadline && <strong>{Math.max(0, Math.ceil((run.deadline - now) / 1000))}s</strong>}</div>}</>}
               <ListeningMeter strength={strength} kind={door.kind} available={available}/>
-              {!available && <button className="tool-offer" onClick={() => buy(tool, 'tool')} disabled={save.brass < TOOLS.find(t => t.id === tool).cost}><Icon name="ear" size={14}/>Equip {tool === 'probe' ? 'signal probe' : 'stethoscope'} <span>{TOOLS.find(t => t.id === tool).cost} brass</span></button>}
+              {!available && (save.tools[tool] > 0
+                ? <button className="tool-offer" onClick={applyTool}><Icon name="ear" size={14}/>Use a {tool === 'probe' ? 'signal probe' : 'stethoscope'} on this door <span>{save.tools[tool]} left</span></button>
+                : <button className="tool-offer" onClick={() => buy(tool, 'tool')} disabled={save.brass < TOOLS.find(t => t.id === tool).cost}><Icon name="ear" size={14}/>Buy a {tool === 'probe' ? 'signal probe' : 'stethoscope'} <span>{TOOLS.find(t => t.id === tool).cost} brass</span></button>)}
               <button className="primary-button set-button" onClick={commit} disabled={run.value < 0 || (door.kind === 'dial' && run.dir === 0)}>{door.kind === 'dial' ? 'Set number' : 'Lock digit'}<Icon name="lock" size={16}/></button>
               <p className={`feedback ${run.clue ? 'has-clue' : ''}`} role="status">{run.clue || (door.id === 'practice' ? `Practice combination: 12 · 28 · 07` : 'Slow turns. Small sounds. Trust your ear.')}</p>
             </> : <div className={`result ${run.status}`} role="status">
               <div className="result-seal">{run.status === 'seized' ? <Icon name="lock" size={29}/> : run.loot === 'gold' ? <Coin gold/> : <Icon name="check" size={29}/>}</div>
-              <span className="eyebrow">{run.status === 'seized' ? 'THREE MISSES' : 'A SATISFYING CLICK'}</span>
+              <span className="eyebrow">{run.status === 'seized' ? run.cause === 'alarm' ? 'THE ALARM TRIPPED' : 'THREE MISSES' : 'A SATISFYING CLICK'}</span>
               <h3>{run.status === 'seized' ? 'The door seized.' : run.loot === 'gold' ? 'A rare find.' : run.loot === 'brass' ? 'Well opened.' : 'A steady beginning.'}</h3>
               <p>{run.status === 'seized' ? 'This door is spent. Pick up another, or find your rhythm on the practice wheel.' : run.loot === 'gold' ? 'One NomStead gold bar, waiting in the quiet.' : run.loot === 'brass' ? 'A little brass for the next door and a better set of tools.' : 'An empty shelf. Practice pays in confidence.'}</p>
               {run.status === 'open' && <div className="reward">{run.loot !== 'empty' && <Coin gold={run.loot === 'gold'}/>}<strong>{run.loot === 'gold' ? '+1' : run.loot === 'brass' ? `+${run.reward}` : 'No payout'}</strong><span>{run.loot === 'gold' ? 'GOLD BAR' : run.loot === 'brass' ? 'BRASS' : 'PRACTICE WHEEL'}</span></div>}
@@ -170,8 +230,8 @@ function CountingHouse({ save, buy, selectDoor }) {
   return <><div className="page-heading"><div><span className="eyebrow">A LITTLE BRASS GOES A LONG WAY</span><h1>The counting house.</h1></div><span className="quiet-note">New doors. Better tools. Another chance.</span></div>
     <div className="shop-section-heading"><h2>Pick your next door</h2><span>One attempt per door · Three misses seize it</span></div>
     <div className="shop-grid">{DOORS.filter(d => d.cost).map(d => <article className="shop-card" key={d.id}><div className="shop-picture"><img src={safeAsset(`${d.model}-thumb.webp`)} alt={`Photographic ${SAFE_LOOKS[d.model]}`} loading="lazy"/><span className="shop-stock">{save.doors[d.id]} IN YOUR WORKSHOP</span></div><div className="shop-card-body"><span className="eyebrow">{d.difficulty}</span><h3>{d.name}</h3><p>{d.description}</p><div className="shop-odds"><span>{d.brass} brass payout</span><span>{Math.round(d.goldChance * 100)}% gold</span></div><button className="purchase-button" disabled={save.brass < d.cost} onClick={() => buy(d.id, 'door')}>Buy a door <span><Coin/>{d.cost}</span></button>{save.doors[d.id] > 0 && <button className="text-button crack-owned" onClick={() => selectDoor(d)}>Crack an owned door <Icon name="arrow" size={13}/></button>}</div></article>)}</div>
-    <div className="shop-section-heading tools-heading"><h2>A better set of ears</h2><span>Buy once. Keep forever.</span></div>
-    <div className="tools-grid">{TOOLS.map(t => <article className="tool-card" key={t.id}><div className="tool-icon"><Icon name={t.id === 'stethoscope' ? 'ear' : 'lock'} size={30}/></div><div><span className="eyebrow">{t.id === 'stethoscope' ? 'MECHANICAL SAFES' : 'ELECTRONIC SAFES'}</span><h3>{t.name}</h3><p>{t.description}</p></div><button className="purchase-button" disabled={save.tools.includes(t.id) || save.brass < t.cost} onClick={() => buy(t.id, 'tool')}>{save.tools.includes(t.id) ? <><Icon name="check" size={16}/>Equipped</> : <>Equip <span><Coin/>{t.cost}</span></>}</button></article>)}</div>
+    <div className="shop-section-heading tools-heading"><h2>A better set of ears</h2><span>One door per tool · Buy again to refill</span></div>
+    <div className="tools-grid">{TOOLS.map(t => <article className="tool-card" key={t.id}><div className="tool-icon"><Icon name={t.id === 'stethoscope' ? 'ear' : 'lock'} size={30}/></div><div><span className="eyebrow">{t.id === 'stethoscope' ? 'MECHANICAL SAFES' : 'ELECTRONIC SAFES'} · {save.tools[t.id]} IN YOUR KIT</span><h3>{t.name}</h3><p>{t.description}</p></div><button className="purchase-button" disabled={save.brass < t.cost} onClick={() => buy(t.id, 'tool')}>Buy one <span><Coin/>{t.cost}</span></button></article>)}</div>
     <div className="cash-packs"><div><span className="eyebrow">CASH PACKS</span><h3>Listed for another day.</h3><p>These packs are not for sale.</p></div>{[500, 1500, 5000].map(n => <div className="cash-pack" key={n}><Coin/><strong>{n.toLocaleString()} brass</strong><small>NOT FOR SALE</small></div>)}</div>
   </>;
 }
