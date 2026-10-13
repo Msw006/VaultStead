@@ -30,26 +30,83 @@ function Icon({ name, size = 20, ...rest }) {
 }
 function Brand() { return <span className="brand"><span className="brand-mark"><Icon name="shelf" size={27}/></span><span>Vaultstead<span className="brand-caption">SAFE-CRACKING GAME</span></span></span>; }
 function Coin({ gold = false }) { return <span className={gold ? 'gold-ingot' : 'brass-coin'} aria-hidden="true"/>; }
-let audio, noiseBuffer;
-function burst(t, frequency, length, level, q) {
+let audio, noiseBuffer, master;
+function output() {
+  if (!master) {
+    master = audio.createDynamicsCompressor();
+    master.threshold.value = -14; master.ratio.value = 6;
+    master.connect(audio.destination);
+  }
+  return master;
+}
+function noise() {
   if (!noiseBuffer) {
-    noiseBuffer = audio.createBuffer(1, audio.sampleRate * .2, audio.sampleRate);
+    noiseBuffer = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
     const data = noiseBuffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   }
-  const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
-  source.buffer = noiseBuffer; filter.type = 'bandpass'; filter.frequency.value = frequency; filter.Q.value = q;
+  const source = audio.createBufferSource();
+  source.buffer = noiseBuffer; source.loop = true;
+  return source;
+}
+function burst(t, frequency, length, level, q, type = 'bandpass') {
+  const source = noise(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  filter.type = type; filter.frequency.value = frequency; filter.Q.value = q;
   gain.gain.setValueAtTime(level, t); gain.gain.exponentialRampToValueAtTime(.0001, t + length);
-  source.connect(filter); filter.connect(gain); gain.connect(audio.destination);
-  source.start(t); source.stop(t + length + .02);
+  source.connect(filter); filter.connect(gain); gain.connect(output());
+  source.start(t, Math.random() * .5); source.stop(t + length + .02);
 }
 function knock(t, from, to, length, level, type = 'sine') {
   const oscillator = audio.createOscillator(), gain = audio.createGain();
   oscillator.type = type; oscillator.frequency.setValueAtTime(from, t); oscillator.frequency.exponentialRampToValueAtTime(to, t + length);
   gain.gain.setValueAtTime(level, t); gain.gain.exponentialRampToValueAtTime(.0001, t + length);
-  oscillator.connect(gain); gain.connect(audio.destination);
+  oscillator.connect(gain); gain.connect(output());
   oscillator.start(t); oscillator.stop(t + length + .02);
 }
+/** A struck steel plate: a few inharmonic partials that ring and fade. */
+function ring(t, base, length, level) {
+  for (const [ratio, share] of [[1, 1], [2.76, .5], [5.4, .25], [8.93, .12]]) knock(t, base * ratio, base * ratio * .995, length / Math.sqrt(ratio), level * share);
+}
+/** A dry hinge: a buzzing saw tone that sticks and slips, filtered to sound like metal rubbing on metal. */
+function creak(t, length, pitch, level) {
+  const saw = audio.createOscillator(), wobble = audio.createOscillator(), wobbleDepth = audio.createGain();
+  const stick = audio.createOscillator(), stickDepth = audio.createGain(), amp = audio.createGain();
+  const body = audio.createBiquadFilter(), squeal = audio.createBiquadFilter(), envelope = audio.createGain();
+  saw.type = 'sawtooth';
+  saw.frequency.setValueAtTime(pitch, t);
+  saw.frequency.linearRampToValueAtTime(pitch * 1.3, t + length * .45);
+  saw.frequency.linearRampToValueAtTime(pitch * .85, t + length);
+  wobble.frequency.value = 6.5; wobbleDepth.gain.value = pitch * .07;
+  wobble.connect(wobbleDepth); wobbleDepth.connect(saw.frequency);
+  stick.type = 'square'; stick.frequency.setValueAtTime(14, t); stick.frequency.linearRampToValueAtTime(22, t + length);
+  stickDepth.gain.value = .45; amp.gain.value = .55;
+  stick.connect(stickDepth); stickDepth.connect(amp.gain);
+  body.type = 'bandpass'; body.frequency.value = 950; body.Q.value = 5;
+  squeal.type = 'bandpass'; squeal.frequency.value = 2400; squeal.Q.value = 12;
+  envelope.gain.setValueAtTime(.0001, t);
+  envelope.gain.exponentialRampToValueAtTime(level, t + .12);
+  envelope.gain.setValueAtTime(level, t + length * .6);
+  envelope.gain.exponentialRampToValueAtTime(.0001, t + length);
+  saw.connect(amp); amp.connect(body); amp.connect(squeal); body.connect(envelope); squeal.connect(envelope); envelope.connect(output());
+  for (const node of [saw, wobble, stick]) { node.start(t); node.stop(t + length + .05); }
+}
+/** Bolts withdraw, the handle catches, the hinge creaks through the swing, and the door settles. `weight` runs from a light box (0.6) to a vault (1.6). */
+function playOpen(weight) {
+  const t = audio.currentTime;
+  knock(t, 130 / weight, 45 / weight, .22 * weight, .45); burst(t, 600, .08, .5, 2); ring(t, 310 / weight, .5, .05);
+  const bolts = Math.round(2 + weight * 2.5);
+  for (let i = 0; i < bolts; i++) {
+    const at = t + .14 + i * (.26 / bolts);
+    burst(at, 2600, .025, .3, 9); knock(at, 420 / weight, 240 / weight, .05, .12);
+  }
+  // Matches the door's transition delay in safe-stage.css.
+  const swing = t + .45;
+  burst(swing, 1500, .03, .25, 6); burst(swing + .06, 1700, .03, .2, 6); ring(swing + .06, 520 / weight, .35, .03);
+  creak(swing + .1, 1.5, 95 / Math.sqrt(weight), .08);
+  burst(swing + .1, 220 / weight, 1.6, .18 * weight, .8, 'lowpass');
+  knock(swing + 1.55, 85 / weight, 38 / weight, .35 * weight, .35); burst(swing + 1.55, 300, .12, .3, 1.5); ring(swing + 1.55, 240 / weight, .8, .04);
+}
+const DOOR_WEIGHT = { practice: .6, street: .9, keypad: .9, heavy: 1.1, treasury: 1.2, vault: 1.6, royal: 1 };
 // tick: a plain step. dull: a tooth heard by ear, true or false alike. gate / decoy: the same teeth through a stethoscope.
 const DIAL_SOUNDS = {
   tick: t => burst(t, 3400, .018, .12, 8),
@@ -58,19 +115,20 @@ const DIAL_SOUNDS = {
   decoy: t => { burst(t, 1700, .03, .25, 4); knock(t, 560, 420, .05, .06, 'triangle'); },
   key: t => knock(t, 1250, 1250, .045, .025, 'square'),
 };
-function playTone(type, active) {
+function playTone(type, active, model) {
   if (!active) return;
   try {
     audio ||= new (window.AudioContext || window.webkitAudioContext)();
     if (audio.state === 'suspended') audio.resume();
     if (DIAL_SOUNDS[type]) { DIAL_SOUNDS[type](audio.currentTime); return; }
+    if (type === 'open') { playOpen(DOOR_WEIGHT[model] ?? 1); return; }
     const oscillator = audio.createOscillator(), gain = audio.createGain();
-    oscillator.connect(gain); gain.connect(audio.destination);
+    oscillator.connect(gain); gain.connect(output());
     oscillator.type = 'triangle';
-    oscillator.frequency.setValueAtTime(type === 'open' ? 220 : type === 'miss' ? 90 : type === 'pin' ? 880 : 440, audio.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(type === 'open' ? 660 : 65, audio.currentTime + (type === 'open' ? .45 : .08));
-    gain.gain.setValueAtTime(.025, audio.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + (type === 'open' ? .6 : .1));
-    oscillator.start(); oscillator.stop(audio.currentTime + (type === 'open' ? .65 : .12));
+    oscillator.frequency.setValueAtTime(type === 'miss' ? 90 : type === 'pin' ? 880 : 440, audio.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(65, audio.currentTime + .08);
+    gain.gain.setValueAtTime(.025, audio.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + .1);
+    oscillator.start(); oscillator.stop(audio.currentTime + .12);
   } catch { /* The game remains playable without audio. */ }
 }
 function readRun(save) {
@@ -187,7 +245,7 @@ function App() {
     const next = setNumber(run, door);
     setRun(next.run);
     if (['open', 'seized'].includes(next.outcome)) setSave(s => settle(s, next.run, door));
-    playTone(next.outcome, sound);
+    playTone(next.outcome, sound, door.model);
     setTimeout(() => { actionLock.current = false; }, 180);
   }
   function startDoor(next, from = save) {

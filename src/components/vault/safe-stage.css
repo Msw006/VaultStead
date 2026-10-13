@@ -6,7 +6,7 @@
 .safe-cavity { overflow: hidden; }
 .safe-cavity img { display: block; width: 100%; height: 100%; }
 .safe-door { transform-origin: 100% 50%; transform-style: preserve-3d; transition: transform 1.8s cubic-bezier(.2,.65,.22,1); will-change: transform; }
-.safe-stage.is-open .safe-door { transform: rotateY(112deg); }
+.safe-stage.is-open .safe-door { transform: rotateY(112deg); transition-delay: .45s; }
 .safe-door-front, .safe-door-back { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .safe-stage.is-round .safe-door-front, .safe-stage.is-round .safe-door-back { clip-path: circle(50%); }
 .safe-door-front { transform: translateZ(1px); }
