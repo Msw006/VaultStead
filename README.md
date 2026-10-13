@@ -1,6 +1,6 @@
 # Vaultstead
 
-A playable, photographic antique safe opening game built with React 19. The safe uses registered photographic plates, a CSS door hinge, and a rotating photographic dial. It imports no Three.js or server-only code.
+A playable, photographic safe opening game built with React 19. The safe uses registered photographic plates, a CSS door hinge, and a rotating photographic dial. It imports no Three.js or server-only code.
 
 ## Play without installation
 
@@ -35,15 +35,16 @@ The same cabinet appears in all states. `Inspect the safe` shows the closed dial
 
 ## Image assets
 
-All six source images were made with the built-in **image_gen** tool from the user's written specification. No reference image was available. The full final prompt set is in [docs/asset-prompts.json](docs/asset-prompts.json).
+The safe is a hybrid of the user's reference photo and written brief: a modern matte charcoal steel fire safe (single combination dial in a white bezel, lever handle, key lock, right hinge, chrome locking bolts on the door's inner left edge, no branding), photographed straight on in the brief's plaster-and-oak room on a faded red rug. All six source images were generated from one master shot, with the other five made as edits of it so the room and cabinet stay registered. The prompts are in [docs/asset-prompts.json](docs/asset-prompts.json).
 
-- Source photographs: `assets/source/`
+- Source photographs: `assets/source/` (1152 × 864)
 - Optimized runtime plates: `public/assets/safe/`
-- Plate registration and WebP encoding: `scripts/prepare-assets.mjs` (requires sharp, already bundled in this workspace).
-- Door crop: x 478, y 230, width 560, height 542 from 1536 × 1024 source images.
-- Live dial face crop: x 535, y 335, width 128, height 128.
+- Plate registration and WebP encoding: `scripts/prepare-assets.mjs` (requires sharp, already bundled in this workspace). `scripts/measure-plates.mjs` re-measures the door gap and each variant's pixel drift against the master.
+- Room plate: the 1152 × 768 band starting at y 40.
+- Door crop: x 340, y 108, width 475, height 621, shifted per source by its measured drift.
+- Live dial: the black number disc, centre (592, 330), radius 53, cropped at 108 × 108 and upscaled to 256.
 
-The room and cabinet do not move. The right-hinged door rotates as one photographed layer, with photographed boltwork on its reverse. Loot photographs are only selected after a successful open. SVG provides accurate engraved 0–40 numerals over the rotating circular dial photo.
+The room and cabinet do not move. The right-hinged door rotates as one photographed layer, with photographed locking bolts on its reverse. Loot photographs are only selected after a successful open. SVG prints white 0–40 graduations over the rotating black disc; the current value is bold under the bezel's fixed index.
 
 ## Checks
 

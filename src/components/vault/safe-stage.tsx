@@ -21,19 +21,20 @@ export function safeAsset(name: string): string {
 const wrap = (n: number) => ((n % 41) + 41) % 41;
 const step = 360 / 41;
 
-/** Engraved 0–40 ring drawn over a photographed dial. The dark band hides the photo's baked, illegible numerals. */
-function DialRing({ value, live = false }: { value: number; live?: boolean }): JSX.Element {
+/**
+ * White 0–40 graduations printed on the photographed black number disc (radius 62.8 in this viewBox).
+ * The black band hides the photo's baked, illegible numerals.
+ */
+function DialRing({ value }: { value: number }): JSX.Element {
   return <>
-    <circle r="46.5" fill="none" stroke="#161714" strokeOpacity=".68" strokeWidth="17" />
-    <circle r="55.2" fill="none" stroke="#9c9585" strokeOpacity=".35" strokeWidth=".5" />
-    <circle r="38.2" fill="none" stroke="#0c0d0b" strokeOpacity=".6" strokeWidth=".8" />
+    <circle r="53" fill="none" stroke="#0d0d0e" strokeOpacity=".94" strokeWidth="18.6" />
     {Array.from({ length: 41 }, (_, n) => {
       const major = n % 5 === 0 && n !== 40;
-      const current = live && n === value;
-      const near = live && Math.abs(wrap(n - value + 20) - 20) <= 2;
+      const current = n === value;
+      const near = Math.abs(wrap(n - value + 20) - 20) <= 2;
       return <g key={n} transform={`rotate(${-n * step})`}>
-        <path d={`M0,-55 v${major ? 4.6 : 2.6}`} stroke={current ? '#e8dcc0' : '#a49c8b'} strokeWidth={major || current ? '.95' : '.6'} />
-        {(current || (major && !near)) && <text y={current ? '-40.6' : '-41.6'} textAnchor="middle" fontSize={current ? 11 : 8.2} fontWeight={current ? 700 : 600} fill={current ? '#efe4c8' : live ? '#b4ab97' : '#9d9584'}>{n}</text>}
+        <path d={`M0,-61.6 v${major || current ? 5.4 : 3.2}`} stroke="#ecebe6" strokeOpacity={current || major ? 1 : .8} strokeWidth={major || current ? 1.3 : .8} />
+        {(current || (major && !near)) && <text y={current ? '-45.4' : '-46.4'} textAnchor="middle" fontSize={current ? 12.5 : 9.4} fontWeight={current ? 700 : 600} fill={current ? '#ffffff' : '#dcdbd5'}>{n}</text>}
       </g>;
     })}
   </>;
@@ -66,7 +67,7 @@ export function SafeStage({ kind, value, found, pins, locked, open, glow, loot =
   }
   const style = { '--dial-angle': `${current.current.angle}deg`, '--signal': Math.max(0, Math.min(1, glow)) } as CSSProperties;
   const progress = Math.max(found, locked.length);
-  const alt = `${open ? 'Open' : 'Closed'} antique charcoal iron ${kind === 'pad' ? 'keypad' : 'dial'} safe${open ? loot === 'gold' ? ', with one gold bar on the shelf' : loot === 'brass' ? ', with brass coins on the shelf' : ', with an empty dark shelf' : ''}`;
+  const alt = `${open ? 'Open' : 'Closed'} charcoal steel ${kind === 'pad' ? 'keypad' : 'dial'} safe${open ? loot === 'gold' ? ', with one gold bar on the shelf' : loot === 'brass' ? ', with brass coins on the shelf' : ', with an empty dark shelf' : ''}`;
 
   return <div className={`safe-stage ${open ? 'is-open' : ''} ${className}`} style={style} data-kind={kind} data-loot={open ? loot : 'hidden'} aria-label={alt}>
     <div className="safe-photo-space">
@@ -81,10 +82,9 @@ export function SafeStage({ kind, value, found, pins, locked, open, glow, loot =
           <div className="live-dial" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
             <svg className="dial-face" viewBox="-64 -64 128 128">
               <image href={safeAsset('dial-face.webp')} x="-64" y="-64" width="128" height="128" />
-              <DialRing value={value} live />
+              <DialRing value={value} />
             </svg>
           </div>
-          <svg className="idle-dial" viewBox="-64 -64 128 128"><DialRing value={0} /></svg>
         </> : <div className="ember-readout">{value < 0 ? '−' : value}</div>}
       </div>
       <div className="safe-door-back"><img src={safeAsset('door-back.webp')} alt="" draggable={false} /></div>

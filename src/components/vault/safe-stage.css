@@ -1,8 +1,8 @@
 .safe-stage { position: relative; width: 100%; aspect-ratio: 3 / 2; isolation: isolate; user-select: none; }
-.safe-photo-space { position: absolute; inset: 0; perspective: 1500px; perspective-origin: 65% 51%; }
+.safe-photo-space { position: absolute; inset: 0; perspective: 1500px; perspective-origin: 71% 50%; }
 .safe-room { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-/* All coordinates are registered to the 1536 × 1024 source photograph. */
-.safe-cavity, .safe-door { position: absolute; left: 31.12%; top: 22.46%; width: 36.46%; height: 52.93%; }
+/* All coordinates are registered to the 1152 × 768 room plate (scripts/prepare-assets.mjs). */
+.safe-cavity, .safe-door { position: absolute; left: 29.514%; top: 8.854%; width: 41.233%; height: 80.859%; }
 .safe-cavity { overflow: hidden; }
 .safe-cavity img { display: block; width: 100%; height: 100%; }
 .safe-door { transform-origin: 100% 50%; transform-style: preserve-3d; transition: transform 1.8s cubic-bezier(.2,.65,.22,1); will-change: transform; }
@@ -11,13 +11,13 @@
 .safe-door-front { transform: translateZ(1px); }
 .safe-door-photo, .safe-door-back > img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
 .safe-door-back { transform: rotateY(180deg) translateZ(6px); }
-.safe-door-thickness { position: absolute; left: 0; top: 0; width: 10px; height: 100%; transform: rotateY(90deg); transform-origin: 0 50%; background-color: #1b1c19; background-size: 100% 100%, auto 100%; background-position: 0 0, 0 0; filter: brightness(.8) contrast(1.1); }
-.live-dial { position: absolute; left: 10.18%; top: 19.37%; width: 22.86%; aspect-ratio: 1; border-radius: 50%; touch-action: none; cursor: ew-resize; }
-.dial-face { display: block; width: 100%; height: 100%; border-radius: 50%; transform: rotate(var(--dial-angle)); filter: drop-shadow(0 1px 1px #0006); }
-.idle-dial { position: absolute; left: 10.18%; top: 58.12%; width: 22.86%; aspect-ratio: 1; pointer-events: none; overflow: visible; }
-.dial-face text, .idle-dial text { font-family: Georgia, serif; paint-order: stroke fill; stroke: #191c19; stroke-width: .6; }
-.dial-access { position: absolute; left: 34.63%; top: 32.71%; width: 8.85%; aspect-ratio: 1; border-radius: 50%; touch-action: none; cursor: ew-resize; z-index: 3; }
+.safe-door-thickness { position: absolute; left: 0; top: 0; width: 12px; height: 100%; transform: rotateY(90deg); transform-origin: 0 50%; background-color: #3a3b3c; background-size: 100% 100%, auto 100%; background-position: 0 0, 0 0; filter: brightness(.85); }
+/* The rotating black number disc; the white bezel and index stay on the door plate. */
+.live-dial { position: absolute; left: 41.684%; top: 27.053%; width: 22.737%; aspect-ratio: 1; border-radius: 50%; touch-action: none; cursor: ew-resize; }
+.dial-face { display: block; width: 100%; height: 100%; border-radius: 50%; transform: rotate(var(--dial-angle)); clip-path: circle(49% at 50% 50%); }
+.dial-face text { font-family: 'Helvetica Neue', Arial, sans-serif; }
+.dial-access { position: absolute; left: 46.701%; top: 30.729%; width: 9.375%; aspect-ratio: 1; border-radius: 50%; touch-action: none; cursor: ew-resize; z-index: 3; }
 .dial-access:hover { box-shadow: 0 0 0 2px #e2ce8b66; }
 .dial-access:focus-visible { outline: 2px solid #e2ce8b; outline-offset: 4px; }
-.ember-readout { position: absolute; left: 12.8%; top: 23.1%; width: 22.5%; height: 8.4%; display: grid; place-items: center; font-family: 'Courier New', monospace; color: #e17d4e; font-size: clamp(10px, 2vw, 26px); font-weight: 700; line-height: 1; text-shadow: 0 0 6px #dc6838aa; }
+.ember-readout { position: absolute; left: 40.42%; top: 28.18%; width: 22.32%; height: 8.7%; display: grid; place-items: center; font-family: 'Courier New', monospace; color: #ff8a52; font-size: clamp(10px, 2.2vw, 28px); font-weight: 700; line-height: 1; text-shadow: 0 0 6px #ff6a2eaa, 0 0 14px #ff5a1e55; }
 @media (prefers-reduced-motion: reduce) { .safe-door { transition-duration: .01s; } }
