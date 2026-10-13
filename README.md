@@ -14,7 +14,7 @@ npm run build
 npm run dev
 ```
 
-Open `http://127.0.0.1:4178`. In the current NomStead workspace, the build also reuses installed React and esbuild packages offline. Browser-local progress is saved automatically. Sound is synthesized locally after interaction.
+Open `http://127.0.0.1:4178`. In the current NomStead workspace, the build also reuses installed React and esbuild packages offline. Browser-local progress is saved automatically. Dial and keypad sounds are synthesized locally after interaction. Door openings are real recordings: `node scripts/prepare-sounds.mjs` (needs ffmpeg, or `FFMPEG=<path>`) mixes CC0 Freesound clips into `public/assets/sound/` (credits in `CREDITS.txt` there) — a small vault for the practice, street, and keypad safes, a deeper bolted door for the heavy, treasury, and royal safes, and a bunker blast door for the bank vault.
 
 ## Mechanics
 

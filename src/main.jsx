@@ -98,6 +98,25 @@ function playOpen(weight) {
   knock(swing + 1.55, 85 / weight, 38 / weight, .35 * weight, .35); burst(swing + 1.55, 300, .12, .3, 1.5); ring(swing + 1.55, 240 / weight, .8, .04);
 }
 const DOOR_WEIGHT = { practice: .6, street: .9, keypad: .9, heavy: 1.1, treasury: 1.2, vault: 1.6, royal: 1 };
+/** Recorded door openings, mixed by scripts/prepare-sounds.mjs. The synthesized playOpen covers the moment before they decode. */
+const DOOR_RECORDING = { practice: 'light', street: 'light', keypad: 'light', heavy: 'medium', treasury: 'medium', royal: 'medium', vault: 'heavy' };
+const recordings = {};
+function loadRecordings() {
+  const bundled = globalThis.__VAULTSTEAD_ASSETS__ ?? {};
+  for (const name of new Set(Object.values(DOOR_RECORDING))) {
+    const file = `sound/open-${name}.mp3`;
+    if (!(name in recordings)) recordings[name] = fetch(bundled[file] ?? '/assets/' + file).then(r => r.arrayBuffer()).then(data => audio.decodeAudioData(data))
+      .then(buffer => (recordings[name] = buffer), () => (recordings[name] = null));
+  }
+}
+function playRecording(model) {
+  const buffer = recordings[DOOR_RECORDING[model] ?? 'medium'];
+  if (!(buffer instanceof AudioBuffer)) return false;
+  const source = audio.createBufferSource(), gain = audio.createGain();
+  source.buffer = buffer; gain.gain.value = .9;
+  source.connect(gain); gain.connect(audio.destination); source.start();
+  return true;
+}
 // tick: a plain step. dull: a tooth heard by ear, true or false alike. gate / decoy: the same teeth through a stethoscope.
 const DIAL_SOUNDS = {
   tick: t => burst(t, 3400, .018, .12, 8),
@@ -111,8 +130,9 @@ function playTone(type, active, model) {
   try {
     audio ||= new (window.AudioContext || window.webkitAudioContext)();
     if (audio.state === 'suspended') audio.resume();
+    loadRecordings();
     if (DIAL_SOUNDS[type]) { DIAL_SOUNDS[type](audio.currentTime); return; }
-    if (type === 'open') { playOpen(DOOR_WEIGHT[model] ?? 1); return; }
+    if (type === 'open') { if (!playRecording(model)) playOpen(DOOR_WEIGHT[model] ?? 1); return; }
     const oscillator = audio.createOscillator(), gain = audio.createGain();
     oscillator.connect(gain); gain.connect(output());
     oscillator.type = 'triangle';
