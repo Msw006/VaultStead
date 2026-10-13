@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SafeStage, safeAsset, SAFE_LOOKS } from './components/vault/safe-stage';
-import { DOORS, TOOLS, SAVE_KEY, loadSave, makeRun, signal, wrap, setNumber, settle, purchase, toolFor, contact, press, expire, spendTool, abandon } from './game.mjs';
+import { DOORS, TOOLS, SAVE_KEY, loadSave, makeRun, signal, wrap, setNumber, settle, purchase, toolFor, contact, press, expire, spendTool, abandon, exchange, stuck, rescue, GOLD_RATE, RESCUE_BRASS, CHEAPEST_DOOR } from './game.mjs';
 import './style.css';
 
 const storage = (() => {
@@ -164,11 +164,28 @@ function Help({ close }) {
       <li><strong>Alarm.</strong> The Treasury safe and the Bank vault have a timer. It starts when you press the first key. If time runs out, you lose the door.</li>
       <li><strong>Tools.</strong> A stethoscope (dial safes) or a signal probe (keypad safes) helps on one safe. Then it is used up. On the Practice safe, tools are free.</li>
       <li><strong>Wrong tries.</strong> 3 wrong tries and you lose the door. Practice has no limit.</li>
-      <li><strong>Rewards.</strong> Most safes give brass. Some give a gold bar. Harder safes have a higher chance of gold.</li>
+      <li><strong>Rewards.</strong> Most safes give brass. Some give a gold bar. Harder safes have a higher chance of gold. In the Shop, you can exchange 1 gold bar for {GOLD_RATE} brass.</li>
+      <li><strong>Out of brass?</strong> If you have no brass for a door, no doors, and no gold, you can get {RESCUE_BRASS} free brass.</li>
     </ol>
     <p className="fine-print">This game runs only in your browser. Gold bars are game rewards, not real money. Cash packs in the Shop are not for sale.</p>
     <button className="primary-button" onClick={close}>Start playing <Icon name="arrow" size={16}/></button>
   </section></div>;
+}
+function ConfirmExchange({ bars, save, cancel, confirm }) {
+  return <div className="modal-cover" onClick={cancel}><section className="help-modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onClick={e => e.stopPropagation()}>
+    <span className="eyebrow">PLEASE CONFIRM</span>
+    <h2 id="confirm-title">Exchange {bars} gold bar{bars === 1 ? '' : 's'}?</h2>
+    <p>You get {bars * GOLD_RATE} brass. You cannot change it back.</p>
+    <dl className="confirm-sums"><div><dt>Gold bars</dt><dd>{save.gold} → {save.gold - bars}</dd></div><div><dt>Brass</dt><dd>{save.brass} → {save.brass + bars * GOLD_RATE}</dd></div></dl>
+    <div className="confirm-actions"><button className="secondary-button" onClick={cancel}>Cancel</button><button className="primary-button" onClick={confirm} autoFocus>Exchange for {bars * GOLD_RATE} brass</button></div>
+  </section></div>;
+}
+/** Shown when the player cannot afford a door and owns none. */
+function MoneyHelp({ save, onRescue, toShop }) {
+  const noDoors = DOORS.every(d => !d.cost || save.doors[d.id] === 0);
+  if (!noDoors || save.brass >= CHEAPEST_DOOR) return null;
+  if (stuck(save)) return <div className="money-help"><Icon name="help" size={18}/><span><strong>You are out of brass and doors.</strong> Take {RESCUE_BRASS} free brass to keep playing.</span><button className="primary-button" onClick={onRescue}>Get {RESCUE_BRASS} free brass</button></div>;
+  return <div className="money-help"><Icon name="help" size={18}/><span><strong>Not enough brass for a door.</strong> You can exchange your gold bars for brass. 1 gold bar = {GOLD_RATE} brass.</span>{toShop && <button className="primary-button" onClick={toShop}>Exchange gold</button>}</div>;
 }
 function ConfirmBuy({ item, category, brass, cancel, confirm }) {
   return <div className="modal-cover" onClick={cancel}><section className="help-modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onClick={e => e.stopPropagation()}>
@@ -276,6 +293,20 @@ function App() {
     setSave(next);
   }
   const askBuy = (id, category) => setAsking({ id, category });
+  const askExchange = bars => setAsking({ category: 'exchange', bars });
+  function confirmExchange() {
+    const next = exchange(save, asking.bars);
+    setAsking(null);
+    if (next === save) return;
+    setSave(next); playTone('pin', sound);
+    setNotice(`You exchanged ${asking.bars} gold bar${asking.bars === 1 ? '' : 's'} for ${asking.bars * GOLD_RATE} brass.`);
+  }
+  function takeRescue() {
+    const next = rescue(save);
+    if (next === save) return;
+    setSave(next); playTone('pin', sound);
+    setNotice(`You got ${RESCUE_BRASS} free brass. Buy a door in the Shop.`);
+  }
   const index = DOORS.indexOf(shown);
 
   return <div className="app-shell">
@@ -284,6 +315,7 @@ function App() {
     <main>
       {view === 'workshop' ? <>
         <div className="page-heading"><div><span className="eyebrow">WORKSHOP</span><h1>Pick a safe. Find the code.</h1></div><span className="quiet-note"><span className="status-dot"/>{durable ? 'Progress saved' : 'Progress is not saved'}</span></div>
+        <MoneyHelp save={save} onRescue={takeRescue} toShop={() => setView('shop')}/>
         <div className="door-tabs" role="group" aria-label="Choose a safe">{DOORS.map(d => {
           const owned = d.id === 'practice' || save.doors[d.id] > 0;
           const status = d.id === 'practice' ? 'FREE' : owned ? `${save.doors[d.id]} DOOR${save.doors[d.id] === 1 ? '' : 'S'}` : 'LOCKED';
@@ -337,17 +369,27 @@ function App() {
           </aside>
         </div>
         <div className="field-notes"><div><span className="note-number">01</span><span><strong>Turn the dial slowly.</strong><small>On the correct number, the click sounds different.</small></span></div><div><span className="note-number">02</span><span><strong>3 wrong tries lose the door.</strong><small>The Practice safe is free and has no limit.</small></span></div><div><span className="note-number">03</span><span><strong>Most safes give brass.</strong><small>Some give a gold bar.</small></span></div></div>
-      </> : view === 'shop' ? <Shop save={save} askBuy={askBuy} selectDoor={selectDoor}/> : view === 'ledger' ? <History save={save} go={() => setView('workshop')}/> : <Gallery back={() => setView('workshop')}/>}
+      </> : view === 'shop' ? <Shop save={save} askBuy={askBuy} askExchange={askExchange} selectDoor={selectDoor} onRescue={takeRescue}/> : view === 'ledger' ? <History save={save} go={() => setView('workshop')}/> : <Gallery back={() => setView('workshop')}/>}
     </main>
     <footer className="site-footer"><span>VAULTSTEAD <span className="footer-divider">/</span> A NOMSTEAD GAME</span><span>Take your time.</span></footer>
     {notice && <div className="toast" role="status"><Icon name="check" size={16}/>{notice}</div>}
     {help && <Help close={() => setHelp(false)}/>}
-    {asking && <ConfirmBuy item={(asking.category === 'tool' ? TOOLS : DOORS).find(i => i.id === asking.id)} category={asking.category} brass={save.brass} cancel={() => setAsking(null)} confirm={confirmBuy}/>}
+    {asking?.category === 'exchange' && <ConfirmExchange bars={asking.bars} save={save} cancel={() => setAsking(null)} confirm={confirmExchange}/>}
+    {asking && asking.category !== 'exchange' && <ConfirmBuy item={(asking.category === 'tool' ? TOOLS : DOORS).find(i => i.id === asking.id)} category={asking.category} brass={save.brass} cancel={() => setAsking(null)} confirm={confirmBuy}/>}
   </div>;
 }
 
-function Shop({ save, askBuy, selectDoor }) {
+function Shop({ save, askBuy, askExchange, selectDoor, onRescue }) {
   return <><div className="page-heading"><div><span className="eyebrow">SHOP</span><h1>Buy doors and tools.</h1></div><span className="quiet-note">One door = one try at a safe.</span></div>
+    <MoneyHelp save={save} onRescue={onRescue}/>
+    <section className="exchange-card" aria-labelledby="exchange-title">
+      <div className="exchange-rate"><Coin gold/><strong>1 gold bar = {GOLD_RATE} brass</strong></div>
+      <div className="exchange-text"><span className="eyebrow">EXCHANGE · YOU HAVE {save.gold} GOLD BAR{save.gold === 1 ? '' : 'S'}</span><h2 id="exchange-title">Exchange gold for brass</h2><p>{save.gold ? 'Turn gold bars into brass to buy more doors and tools.' : 'You have no gold bars yet. Open real safes to find them.'}</p></div>
+      <div className="exchange-actions">
+        <button className="purchase-button" disabled={save.gold < 1} onClick={() => askExchange(1)}>Exchange 1 bar <span><Coin/>{GOLD_RATE}</span></button>
+        {save.gold > 1 && <button className="purchase-button" onClick={() => askExchange(save.gold)}>Exchange all {save.gold} bars <span><Coin/>{save.gold * GOLD_RATE}</span></button>}
+      </div>
+    </section>
     <div className="shop-section-heading"><h2>Safes</h2><span>Each door gives one try. 3 wrong tries lose the door.</span></div>
     <div className="shop-grid">{DOORS.filter(d => d.cost).map(d => <article className="shop-card" key={d.id}><div className="shop-picture"><img src={safeAsset(`${d.model}-thumb.webp`)} alt={`Photographic ${SAFE_LOOKS[d.model]}`} loading="lazy"/><span className="shop-stock">YOU HAVE {save.doors[d.id]}</span></div><div className="shop-card-body"><span className="eyebrow">{d.difficulty}</span><h3>{d.name}</h3><p>{d.description}</p><div className="shop-odds"><span>Reward: {d.brass} brass</span><span>Gold bar: {Math.round(d.goldChance * 100)}%</span></div>
       {save.doors[d.id] > 0 && <button className="primary-button play-owned" onClick={() => selectDoor(d)}>Play this safe <Icon name="arrow" size={14}/></button>}

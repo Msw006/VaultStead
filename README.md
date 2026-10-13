@@ -36,6 +36,7 @@ Open `http://127.0.0.1:4178`. In the current NomStead workspace, the build also 
   | Royal safe | 5-number dial | 480 | 650 | 38% |
 
 - Most real opens pay brass. A gold payout contains one bar and no brass coins. A brass payout contains coins and no gold bar.
+- Gold bars exchange for brass in the Shop at 1 bar = 250 brass (one bar or all at once, with confirmation). If a player has no door, no gold, and less brass than the cheapest door (70), the workshop and Shop offer 100 free brass so the game cannot dead-end.
 - Brass buys doors and single-use tools in the Shop. Every purchase asks for confirmation and shows the balance before and after. Clicking a safe you do not own shows it in the workshop with its price and a buy button, instead of switching pages. Cash packs are listed and not for sale.
 - New games start with 240 brass, one street door, one keypad door, and one stethoscope. Saves from before the bank vault and royal safe load with zero doors for those tiers, and saves from when tools were permanent get one use of each tool they owned. This is a standalone browser prototype; in-game gold is a local reward, with no on-chain transaction.
 

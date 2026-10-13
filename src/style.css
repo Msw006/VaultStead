@@ -141,6 +141,18 @@ h3 { font: 22px/1.3 var(--serif); letter-spacing: -.4px; }
 .play-owned + .purchase-button { margin-top: 8px; }
 .door-tabs button.is-locked > span:first-child { color: #85877d; }
 .door-tabs small { display: inline-flex; align-items: center; gap: 4px; }
+.money-help { display: flex; align-items: center; gap: 14px; margin: 0 0 18px; padding: 14px 18px; border: 1px solid #d8c48f; background: #f7efd9; font-size: 14px; line-height: 1.5; color: #5d4f27; }
+.money-help > span { flex: 1; }
+.money-help .primary-button { flex: none; padding: 12px 18px; font-size: 14px; }
+.exchange-card { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 28px; padding: 24px 28px; border: 1px solid var(--line); background: var(--paper); margin-bottom: 8px; }
+.exchange-rate { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-right: 28px; border-right: 1px solid var(--line); }
+.exchange-rate .gold-ingot { width: 44px; height: 26px; }
+.exchange-rate strong { font: 18px var(--serif); white-space: nowrap; }
+.exchange-text h2 { font-size: 24px; margin: 6px 0; }
+.exchange-text p { font-size: 14px; color: #6f7465; }
+.exchange-actions { display: flex; flex-direction: column; gap: 8px; min-width: 240px; }
+.exchange-actions .purchase-button { margin-top: 0; font-size: 14px; }
+@media (max-width: 760px) { .exchange-card { grid-template-columns: 1fr; gap: 16px; padding: 20px 16px; } .exchange-rate { flex-direction: row; border-right: 0; padding-right: 0; } .exchange-actions { min-width: 0; } .money-help { flex-wrap: wrap; } .money-help .primary-button { width: 100%; } }
 .field-notes { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 22px; padding: 24px 0; border-bottom: 1px solid var(--line); gap: 24px; }
 .field-notes > div { display: flex; gap: 12px; align-items: flex-start; }
 .note-number { font-family: var(--serif); color: #bab5a4; font-size: 24px; line-height: 1; }

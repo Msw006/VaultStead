@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DOORS, freshSave, makeRun, setNumber, signal, settle, purchase, loadSave, wrap, spendTool, abandon, contact, press, expire } from '../src/game.mjs';
+import { DOORS, freshSave, makeRun, setNumber, signal, settle, purchase, loadSave, wrap, spendTool, abandon, contact, press, expire, exchange, stuck, rescue, GOLD_RATE, RESCUE_BRASS, CHEAPEST_DOOR } from '../src/game.mjs';
 
 function finish(door, lootRoll) {
   let run = makeRun(door, () => .3);
@@ -96,6 +96,20 @@ test('keypads show worn digits, harder keypads add false wear, and the probe rea
   assert.equal(signal(run, keypad), 1);
   assert.equal(signal({ ...run, value: 7 }, keypad), .55);
   assert.equal(signal({ ...run, value: 8 }, keypad), .1);
+});
+test('gold bars exchange for brass at a fixed rate and never below zero', () => {
+  const rich = { ...freshSave(), gold: 3, brass: 10 };
+  const one = exchange(rich, 1); assert.equal(one.gold, 2); assert.equal(one.brass, 10 + GOLD_RATE);
+  assert.equal(exchange(rich, 3).brass, 10 + 3 * GOLD_RATE);
+  for (const bars of [0, -1, 4, 1.5]) assert.equal(exchange(rich, bars), rich);
+});
+test('free brass is offered only when the player has no door, no gold, and too little brass', () => {
+  const broke = { ...freshSave(), brass: 20, doors: { street: 0, keypad: 0, heavy: 0, treasury: 0, vault: 0, royal: 0 } };
+  assert.ok(stuck(broke)); assert.equal(rescue(broke).brass, 20 + RESCUE_BRASS);
+  assert.ok(!stuck(rescue(broke)));
+  for (const save of [{ ...broke, gold: 1 }, { ...broke, brass: CHEAPEST_DOOR }, { ...broke, doors: { ...broke.doors, keypad: 1 } }]) {
+    assert.ok(!stuck(save)); assert.equal(rescue(save), save);
+  }
 });
 test('the treasury alarm arms at the first key and seizes the door when it runs out', () => {
   const door = DOORS.find(d => d.id === 'treasury');

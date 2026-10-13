@@ -97,6 +97,20 @@ export function settle(save, run, door) {
   const won = run.status === 'open';
   return { ...save, doors: { ...save.doors, [door.id]: save.doors[door.id] - 1 }, brass: save.brass + (won && run.loot === 'brass' ? run.reward : 0), gold: save.gold + (won && run.loot === 'gold' ? 1 : 0), opens: save.opens + Number(won), seizures: save.seizures + Number(!won), history: [{ door: door.name, status: run.status, loot: run.loot, amount: run.reward, date: new Date().toISOString() }, ...save.history].slice(0, 12) };
 }
+export const GOLD_RATE = 250;
+export const RESCUE_BRASS = 100;
+export const CHEAPEST_DOOR = Math.min(...DOORS.filter(d => d.cost).map(d => d.cost));
+export function exchange(save, bars) {
+  if (!Number.isSafeInteger(bars) || bars < 1 || save.gold < bars) return save;
+  return { ...save, gold: save.gold - bars, brass: save.brass + bars * GOLD_RATE };
+}
+/** No door to play, not enough brass for one, and no gold to sell: the game would be over. */
+export function stuck(save) {
+  return save.brass < CHEAPEST_DOOR && save.gold === 0 && DOORS.every(d => !d.cost || save.doors[d.id] === 0);
+}
+export function rescue(save) {
+  return stuck(save) ? { ...save, brass: save.brass + RESCUE_BRASS } : save;
+}
 export function purchase(save, id, category) {
   const item = (category === 'tool' ? TOOLS : DOORS).find(i => i.id === id);
   if (!item || !item.cost || save.brass < item.cost) return save;
