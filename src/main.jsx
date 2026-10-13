@@ -67,28 +67,19 @@ function knock(t, from, to, length, level, type = 'sine') {
 function ring(t, base, length, level) {
   for (const [ratio, share] of [[1, 1], [2.76, .5], [5.4, .25], [8.93, .12]]) knock(t, base * ratio, base * ratio * .995, length / Math.sqrt(ratio), level * share);
 }
-/** A dry hinge: a buzzing saw tone that sticks and slips, filtered to sound like metal rubbing on metal. */
-function creak(t, length, pitch, level) {
-  const saw = audio.createOscillator(), wobble = audio.createOscillator(), wobbleDepth = audio.createGain();
-  const stick = audio.createOscillator(), stickDepth = audio.createGain(), amp = audio.createGain();
-  const body = audio.createBiquadFilter(), squeal = audio.createBiquadFilter(), envelope = audio.createGain();
-  saw.type = 'sawtooth';
-  saw.frequency.setValueAtTime(pitch, t);
-  saw.frequency.linearRampToValueAtTime(pitch * 1.3, t + length * .45);
-  saw.frequency.linearRampToValueAtTime(pitch * .85, t + length);
-  wobble.frequency.value = 6.5; wobbleDepth.gain.value = pitch * .07;
-  wobble.connect(wobbleDepth); wobbleDepth.connect(saw.frequency);
-  stick.type = 'square'; stick.frequency.setValueAtTime(14, t); stick.frequency.linearRampToValueAtTime(22, t + length);
-  stickDepth.gain.value = .45; amp.gain.value = .55;
-  stick.connect(stickDepth); stickDepth.connect(amp.gain);
-  body.type = 'bandpass'; body.frequency.value = 950; body.Q.value = 5;
-  squeal.type = 'bandpass'; squeal.frequency.value = 2400; squeal.Q.value = 12;
+/** A hinge grinding: filtered noise with an irregular grain and a slow sweep. Any steady pitch or vibrato here reads as a voice. */
+function grind(t, length, from, to, level) {
+  const source = noise(), band = audio.createBiquadFilter(), grain = audio.createGain(), envelope = audio.createGain();
+  band.type = 'bandpass'; band.Q.value = 2.5;
+  band.frequency.setValueAtTime(from, t); band.frequency.exponentialRampToValueAtTime(to, t + length);
+  const steps = Array.from({ length: Math.round(length * 40) }, () => .25 + Math.random() * .75);
+  grain.gain.setValueCurveAtTime(Float32Array.from(steps), t, length);
   envelope.gain.setValueAtTime(.0001, t);
-  envelope.gain.exponentialRampToValueAtTime(level, t + .12);
-  envelope.gain.setValueAtTime(level, t + length * .6);
+  envelope.gain.exponentialRampToValueAtTime(level, t + .15);
+  envelope.gain.setValueAtTime(level, t + length * .55);
   envelope.gain.exponentialRampToValueAtTime(.0001, t + length);
-  saw.connect(amp); amp.connect(body); amp.connect(squeal); body.connect(envelope); squeal.connect(envelope); envelope.connect(output());
-  for (const node of [saw, wobble, stick]) { node.start(t); node.stop(t + length + .05); }
+  source.connect(band); band.connect(grain); grain.connect(envelope); envelope.connect(output());
+  source.start(t, Math.random() * .5); source.stop(t + length + .05);
 }
 /** Bolts withdraw, the handle catches, the hinge creaks through the swing, and the door settles. `weight` runs from a light box (0.6) to a vault (1.6). */
 function playOpen(weight) {
@@ -102,7 +93,7 @@ function playOpen(weight) {
   // Matches the door's transition delay in safe-stage.css.
   const swing = t + .45;
   burst(swing, 1500, .03, .25, 6); burst(swing + .06, 1700, .03, .2, 6); ring(swing + .06, 520 / weight, .35, .03);
-  creak(swing + .1, 1.5, 95 / Math.sqrt(weight), .08);
+  grind(swing + .1, 1.4, 700 / weight, 450 / weight, .22);
   burst(swing + .1, 220 / weight, 1.6, .18 * weight, .8, 'lowpass');
   knock(swing + 1.55, 85 / weight, 38 / weight, .35 * weight, .35); burst(swing + 1.55, 300, .12, .3, 1.5); ring(swing + 1.55, 240 / weight, .8, .04);
 }
